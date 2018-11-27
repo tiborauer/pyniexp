@@ -8,33 +8,44 @@ except ImportError:
 
 kbLayout = [k[0] for k in keyboard._os_keyboard.official_virtual_keys.values()]
 
+class Key:
+    name = ''
+    state = ''
+    timeDown = 0
+    timeUp = 0
+    @property
+    def time(self):
+        return max(self.timeDown,self.timeUp)
+
+    def __init__(self,name):
+        self.name = name
+        self.state = 'up'
+
+    def eventTime(self,etype):
+        if etype == 'down': return self.timeDown
+        elif etype == 'up': return self.timeUp
+        else: return -1
+    
+    def update(self,etype,val):
+        self.state = etype
+        if self.state == 'down': self.timeDown = val
+        elif self.state == 'up': self.timeUp = val
+        
 class Kb:
 
-    # Public property
-    __readInterval = 0.1 # seconds
-    @property
-    def readInterval(self):
-        return self.__readInterval
-    
-    @readInterval.setter
-    def readInterval(self,val):
-        MINVAL = 0.1
-        self.__readInterval = max(val,MINVAL)
-
     # Private property
-    __Buffer = []
+    __keys = [Key(name) for name in kbLayout]
 
     def __init__(self):
         keyboard.hook(self.__store_keys)
 
-    def Stop(self):
+    def stop(self):
         keyboard.unhook_all()
 
-    def kbCheck(self,doClearBuffer=True):
-        val = [(k.name, k.event_type, k.time) for k in self.__Buffer if time.time() - k.time <= self.readInterval]
-        if doClearBuffer:
-            self.__Buffer = []
-        return val
+    def kbCheck(self):
+        return [(k.name, k.state, k.time) for k in self.__keys]
 
     def __store_keys(self,e):
-            self.__Buffer.append(e)
+            K = [k for k in self.__keys if k.name == e.name]
+            if len(K):
+                K[0].update(e.event_type,e.time)
