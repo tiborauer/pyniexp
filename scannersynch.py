@@ -2,6 +2,8 @@ import math
 import sys
 import time
 
+import utils
+
 try:
     import nidaqmx
 except ImportError:
@@ -9,9 +11,9 @@ except ImportError:
     print('You can run ScannerSynch only in emulation mode')
 
 try:
-    import keyboard
+    import kbutils
 except ImportError:
-    print('WARNING: keyboard module is not available --> ', end='')
+    print('WARNING: kbutils module is not available --> ', end='')
     print('You cannot emulate buttons')
 
 #### Emulation class for DAQ
@@ -79,11 +81,11 @@ class ScannerSynchClass:
 
     # Private properties
     __DAQ = None
+    __Kb = None
     __nChannels = 0
         
     __t0 = None # internal timer
         
-    __KBList = []
     __Data = [] # current data
     __Datap = []# previous data
     __TOA = [] # time of access 1*n
@@ -93,12 +95,12 @@ class ScannerSynchClass:
     __BBoxWaitForRealease = False # wait for release instead of press
         
     __isDAQ = 'nidaqmx' in sys.modules
-    __isKB = 'keyboard' in sys.modules # Button emulation (keyboard)
+    __isKb = 'kbutils' in sys.modules # Button emulation (keyboard)
 
     # Dependent properties
     @property
     def IsValid(self):
-        return (not self.__DAQ == None) and (not self.__EmulButtons or (self.__EmulButtons and self.__isKB))
+        return (not self.__DAQ == None) and (not self.__EmulButtons or (self.__EmulButtons and self.__isKb))
 
     @property
     def Clock(self):
@@ -106,17 +108,34 @@ class ScannerSynchClass:
             
     @property
     def Synch(self):
-        return []
+        val = False
+        self.__Refresh()
+        if self.__Data[0]:
+            self.__Data[0] = False
+            val = True
+        return val
     @property
     def TimeOfLastPulse(self):
-        return []
+        return self.__TOA[0]
     @property
     def MeasuredTR(self):
-        return []
+        return (self.__TOA[0] - self.__TOAp[0])/(self.MissedSynch + 1)
 
     @property
     def Buttons(self):
-        return []
+        val = False
+        self.__Refresh()
+        if self.__BBoxWaitForRealease:
+            if any(self.__Datap[1:len(self.__Datap)]) and all([self.__Data[i] ^ self.__Datap[i] for i in range(0,len(self.__Datap))]):
+                self.__LastButtonPress = [i-1 for i in range(1,len(self.__Datap)) if self.__Datap[i]]
+                self.__Datap = [self.__Datap[0]] + [False] * (len(self.__Datap)-1)
+                vale = True
+        else:
+            if any(self.__Data[1:len(self.__Data)]):
+                self.__LastButtonPress = [i-1 for i in range(1,len(self.__Data)) if self.__Data[i]]
+                self.__Data = [self.__Data[0]] + [False] * (len(self.__Data)-1)
+                vale = True
+        return val
     @property
     def TimeOfLastButtonPress(self):
         return []
@@ -204,8 +223,8 @@ class ScannerSynchClass:
         if self.__isDAQ:
             self.__DAQ.close()
         
-        if self.__isKB:
-            keyboard.unhook_all()
+        if self.__isKb:
+            self.__Kb.Stop()
 
         print('Done')
 
@@ -218,12 +237,48 @@ class ScannerSynchClass:
 
     @Keys.setter
     def Keys(self,val):
-        self.__Keys = val
-        self.__KBList = []
-        keyboard.hook(self.__store_keys)
+        if self.__isKb:
+            kbutils.kbLayout
+            if not all(utils.ismember(val,kbutils.kbLayout)):
+                print('WARNING: Some keys are not recognised in...')
+                print(kbutils.kbLayout)
+                return
+
+            self.__Keys = val
+            if type(self.__Kb) != kbutils.Kb:
+                self.__Kb = kbutils.Kb()
+        else:
+            print('WARNING: "kbutils" is not available')
+
+    ## Scanner Pulse
+    def ResetSynchCount(self):
+        self.__SynchCount = 0
+
+    def SetSynchReadoutTime(self,t):
+        self.__ReadoutTime[0] = t
+    
+    def WaitForSynch(self):
+        while not self.Synch():
+            pass
+        self.__NewSynch()
+    
+    def CheckSynch(self,timeout):
+        SynchQuery = self.Clock
+
+        val = False
+
+        while (self.Clock - SynchQuery) < timeout:
+            if self.Synch:
+                self.__NewSynch()
+                val = True
+                break            
+
+        return val
+
+    ## Buttons
 
     ## Low level methods
-    def Refresh(self):
+    def __Refresh(self):
         t = self.Clock
 
         # get data
@@ -231,12 +286,40 @@ class ScannerSynchClass:
             data = [self.isInverted^d for d in self.__DAQ.read()]
             data[0] = any(data[0:2]); del(data[1])
             data[2] = False # CAVE - Lumitouch: button two is not working
+            if all([data[i] for i in [1, 3, 4]]): # CAVE - Lumitouch: random signal on all channels
+                for i in range(1,5): data[i] = False
+#             for i in range(1,5): data[i] = False # TEMP: Lumitouch not connected
+#             for i in range(5,11): data[i] = False # TEMP: NATA not connected
         else:
             data = [0] * len(self.__DAQ.di_channels)
+        
+        data = [data[0]] + [utils.binvec2dec(data[1:5]) == b for b in self.__buttList_LT] + [utils.binvec2dec(data[5:11]) == b for b in self.__buttList_NATA]
 
-    #            if all(data([2 4 5])), data(2:5) = 0; end % CAVE - Lumitouch: random signal on all channels
-#%                 data(2:5) = 0; % TEMP: Lumitouch not connected
-#%                 data(6:11) = 0; % TEMP: NATA not connected
-    
-    def __store_keys(self,e):
-        self.__KBList.append(e)
+        # scanner synch pulse emulation
+        if self.EmulSynch and self.TR:
+            data[0] = (not self.__SynchCount) or ((t-self.__TOA[0] >= self.TR) and ((t-self.__TOA[0]) % self.TR <= self.PulseWidth))
+ 
+        # button press emulation (keyboard) via PTB
+        if self.EmulButtons:
+            nKeys = len(self.Keys)
+            if self.__isKb and nKeys:
+                kbdata = self.__Kb.kbCheck(); keyCode = [k[0] for k in kbdata if k[1] == 'down']
+                data = [data[0]] + utils.ismember(self.Keys,keyCode)
+        
+        if self.__BBoxReadout: 
+            self.__TOA = [self.__TOA[0]] + [max(self.__TOA[1:len(self.__TOA)])] * (len(self.__TOA)-1)
+        ind = [td > ReadoutTime for td in [t-t0 for t0 in self.__TOA]]
+        self.__Datap = self.__Data
+        self.__Data = [data[i] if ind[i] else self.__Data[i] for i in range(0,len(self.__Data))]
+        self.__TOAp = self.__TOA
+        self.__TOA = [t if self.__Data[i] else self.__TOA[i] for i in range(0,len(self.__Data))]
+
+    def __NewSynch(self):
+        if not self.SynchCount:
+            self.ResetClock()
+            self.__SynchCount = 1
+        else:
+            if self.TR:
+                self.__MissedSynch = 0
+                self.__MissedSynch = round(self.MeasuredTR/self.TR)-1
+            self.__SynchCount = self.SynchCount + 1 + self.MissedSynch
