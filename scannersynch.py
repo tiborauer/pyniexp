@@ -65,7 +65,7 @@ class ScannerSynchClass:
     def TimeOfButtonPresses(self):
         return self.__TimeOfButtonPresses   
 
-    __LastButtonPress = 0
+    __LastButtonPress = []
     @property
     def LastButtonPress(self):
         return self.__LastButtonPress   
@@ -138,7 +138,7 @@ class ScannerSynchClass:
         return val
     @property
     def TimeOfLastButtonPress(self):
-        return []
+        return max(self.__TOA[1:len(self.__TOA)]) * (len(self.LastButtonPress) > 0)
 
     ## Constructor
 
@@ -223,8 +223,8 @@ class ScannerSynchClass:
         if self.__isDAQ:
             self.__DAQ.close()
         
-        if self.__isKb:
-            self.__Kb.Stop()
+        if self.__Kb:
+            self.__Kb.stop()
 
         print('Done')
 
@@ -258,7 +258,7 @@ class ScannerSynchClass:
         self.__ReadoutTime[0] = t
     
     def WaitForSynch(self):
-        while not self.Synch():
+        while not self.Synch:
             pass
         self.__NewSynch()
     
@@ -276,6 +276,61 @@ class ScannerSynchClass:
         return val
 
     ## Buttons
+    def SetButtonReadoutTime(self,t):
+        self.__ReadoutTime = [self.__ReadoutTime[0]] + [t]*(len(self.__ReadoutTime)-1)
+        self.__BBoxReadout = False
+        
+    def SetButtonBoxReadoutTime(self,t):
+        self.__ReadoutTime = [self.__ReadoutTime[0]] + [t]*(len(self.__ReadoutTime)-1)
+        self.__BBoxReadout = True
+
+    def WaitForButtonPress(self,*args): # timeout, ind
+        BBoxQuery = self.Clock
+
+        # Reset indicator
+        self.__ButtonPresses = []
+        self.__TimeOfButtonPresses = []
+        self.__LastButtonPress = []    
+
+        # timeout
+        if len(args) >= 1 and len(args[0]): timeout = args[0]
+        else: timeout = self.BBoxTimeout
+        wait = timeout < 0 # wait until timeout even in case of response
+        timeout = abs(timeout)
+
+        while (not self.Buttons or # button pressed
+            wait or
+            (len(args) >= 2 and len(args[1]) and not any([bp == args[1] for pb in self.LastButtonPress])) and # corrrct button pressed
+            (self.Clock - BBoxQuery < timeout)):
+            if len(self.LastButtonPress):
+                if len(args) >= 2 and len(args[1]) and not any([bp == args[1] for pb in self.LastButtonPress]): continue # incorrect button
+                if len(self.TimeOfButtonPresses) and (self.TimeOfButtonPresse[len(self.TimeOfButtonPresses)] == self.TimeOfLastButtonPress): continue # same event
+                self.__ButtonPresses = self.__ButtonPresses + self.LastButtonPress
+                self.__TimeOfButtonPresses = self.__TimeOfButtonPresses + [self.TimeOfLastButtonPress]*len(self.LastButtonPress)
+
+    def WaitForButtonRelease(self,*args):
+        # backup settings
+        rot = self.__ReadoutTime[1:len(self.__ReadoutTime)] 
+        bbrot = self.BBoxReadout 
+
+        # config for release
+        self.__BBoxWaitForRealease = True
+        self.SetButtonBoxReadoutTime(0)
+
+        self.WaitForButtonPress(*args)
+            
+        # restore settings
+        self.__BBoxWaitForRealease = False
+        self.__ReadoutTime = [self.__ReadoutTime[0]] + [rot]*(len(self.__ReadoutTime)-1) 
+        self.BBoxReadout = bbro
+
+    def ReadButton(self):
+        b = self.LastButtonPress
+        t = self.TimeOfLastButtonPress
+        self.__LastButtonPress = []
+        self.__ButtonPresses = []
+        self.__TimeOfButtonPresses = []
+        return (b,t)
 
     ## Low level methods
     def __Refresh(self):
@@ -308,7 +363,7 @@ class ScannerSynchClass:
         
         if self.__BBoxReadout: 
             self.__TOA = [self.__TOA[0]] + [max(self.__TOA[1:len(self.__TOA)])] * (len(self.__TOA)-1)
-        ind = [td > ReadoutTime for td in [t-t0 for t0 in self.__TOA]]
+        ind = [t-self.__TOA[i] > self.__ReadoutTime[i] for i in range(0,len(self.__ReadoutTime))]
         self.__Datap = self.__Data
         self.__Data = [data[i] if ind[i] else self.__Data[i] for i in range(0,len(self.__Data))]
         self.__TOAp = self.__TOA
