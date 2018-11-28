@@ -126,15 +126,15 @@ class ScannerSynchClass:
         val = False
         self.__Refresh()
         if self.__BBoxWaitForRealease:
-            if any(self.__Datap[1:len(self.__Datap)]) and all([self.__Data[i] ^ self.__Datap[i] for i in range(0,len(self.__Datap))]):
+            if any(self.__Datap[1:len(self.__Datap)]) and all([not(self.__Data[i] and self.__Datap[i]) for i in range(0,len(self.__Datap))]):
                 self.__LastButtonPress = [i-1 for i in range(1,len(self.__Datap)) if self.__Datap[i]]
                 self.__Datap = [self.__Datap[0]] + [False] * (len(self.__Datap)-1)
-                vale = True
+                val = True
         else:
             if any(self.__Data[1:len(self.__Data)]):
                 self.__LastButtonPress = [i-1 for i in range(1,len(self.__Data)) if self.__Data[i]]
                 self.__Data = [self.__Data[0]] + [False] * (len(self.__Data)-1)
-                vale = True
+                val = True
         return val
     @property
     def TimeOfLastButtonPress(self):
@@ -245,6 +245,12 @@ class ScannerSynchClass:
                 return
 
             self.__Keys = val
+            self.__DAQ.di_channels = range(1, 1+len(self.__Keys) +1)
+            self.nChannels = 1+len(self.__Keys)
+            self.__Data = [0] * self.nChannels
+            self.__Datap = [0] * self.nChannels
+            self.__ReadoutTime = [self.__ReadoutTime[0]] + [self.__ReadoutTime[1]]*(self.nChannels-1)
+
             if type(self.__Kb) != kbutils.Kb:
                 self.__Kb = kbutils.Kb()
         else:
@@ -293,25 +299,25 @@ class ScannerSynchClass:
         self.__LastButtonPress = []    
 
         # timeout
-        if len(args) >= 1 and len(args[0]): timeout = args[0]
+        if len(args) >= 1 and type(args[0]) == int: timeout = args[0]
         else: timeout = self.BBoxTimeout
         wait = timeout < 0 # wait until timeout even in case of response
         timeout = abs(timeout)
 
-        while (not self.Buttons or # button pressed
+        while ((not self.Buttons or # button pressed
             wait or
-            (len(args) >= 2 and len(args[1]) and not any([bp == args[1] for pb in self.LastButtonPress])) and # corrrct button pressed
-            (self.Clock - BBoxQuery < timeout)):
+            (len(args) >= 2 and type(args[1]) == int and not any([bp == args[1] for bp in self.LastButtonPress]))) and # corrrct button pressed
+            self.Clock - BBoxQuery < timeout):
             if len(self.LastButtonPress):
-                if len(args) >= 2 and len(args[1]) and not any([bp == args[1] for pb in self.LastButtonPress]): continue # incorrect button
-                if len(self.TimeOfButtonPresses) and (self.TimeOfButtonPresse[len(self.TimeOfButtonPresses)] == self.TimeOfLastButtonPress): continue # same event
+                if len(args) >= 2 and type(args[1]) == int and not any([bp == args[1] for bp in self.LastButtonPress]): continue # incorrect button
+                if len(self.TimeOfButtonPresses) and (self.TimeOfButtonPresses[len(self.TimeOfButtonPresses)-1] == self.TimeOfLastButtonPress): continue # same event
                 self.__ButtonPresses = self.__ButtonPresses + self.LastButtonPress
                 self.__TimeOfButtonPresses = self.__TimeOfButtonPresses + [self.TimeOfLastButtonPress]*len(self.LastButtonPress)
 
     def WaitForButtonRelease(self,*args):
         # backup settings
         rot = self.__ReadoutTime[1:len(self.__ReadoutTime)] 
-        bbrot = self.BBoxReadout 
+        bbro = self.__BBoxReadout 
 
         # config for release
         self.__BBoxWaitForRealease = True
@@ -321,8 +327,8 @@ class ScannerSynchClass:
             
         # restore settings
         self.__BBoxWaitForRealease = False
-        self.__ReadoutTime = [self.__ReadoutTime[0]] + [rot]*(len(self.__ReadoutTime)-1) 
-        self.BBoxReadout = bbro
+        self.__ReadoutTime = [self.__ReadoutTime[0]] + rot
+        self.__BBoxReadout = bbro
 
     def ReadButton(self):
         b = self.LastButtonPress
@@ -360,7 +366,7 @@ class ScannerSynchClass:
             if self.__isKb and nKeys:
                 kbdata = self.__Kb.kbCheck(); keyCode = [k[0] for k in kbdata if k[1] == 'down']
                 data = [data[0]] + utils.ismember(self.Keys,keyCode)
-        
+
         if self.__BBoxReadout: 
             self.__TOA = [self.__TOA[0]] + [max(self.__TOA[1:len(self.__TOA)])] * (len(self.__TOA)-1)
         ind = [t-self.__TOA[i] > self.__ReadoutTime[i] for i in range(0,len(self.__ReadoutTime))]
