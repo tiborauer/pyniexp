@@ -1,4 +1,4 @@
-from scannersynch import scannersynch
+from pyniexp import scannersynch
 
 ## Initialise
 # SSO = scannersynch.ScannerSynchClass()
@@ -8,7 +8,7 @@ from scannersynch import scannersynch
 
 ## Example for scanner synch pulse #1: - Simple case
 def example_scanner():
-    SSO = scannersynch.ScannerSynchClass(True)
+    SSO = scannersynch.ScannerSynch(True)
     SSO.SetSynchReadoutTime(0.5)
     SSO.TR = 2                 # allows detecting missing pulses
     SSO.ResetSynchCount()
@@ -24,7 +24,7 @@ def example_emulscanner():
     import time
     import random
 
-    SSO = scannersynch.ScannerSynchClass(True)
+    SSO = scannersynch.ScannerSynch(True)
     SSO.SetSynchReadoutTime(0.5)
     SSO.TR = 2                                   # allows detecting missing pulses
     SSO.ResetSynchCount()
@@ -39,7 +39,7 @@ def example_emulscanner():
 
 ## Example for buttons:
 def example_buttons():
-    SSO = scannersynch.ScannerSynchClass(True, True)
+    SSO = scannersynch.ScannerSynch(True, True)
     SSO.SetButtonReadoutTime(0.5)    # block individual buttons
     # SSO.SetButtonBoxReadoutTime(0.5) # block the whole buttonbox
     SSO.Keys = ['1','2','3','4']       # emulation Buttons #1-#4 with "1"-"4"

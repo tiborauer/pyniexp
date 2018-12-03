@@ -2,7 +2,7 @@ import math
 import sys
 import time
 
-import scannersynch.utils as utils
+import pyniexp.utils as utils
 
 try:
     import nidaqmx
@@ -11,14 +11,14 @@ except ImportError:
     print('You can run ScannerSynch only in emulation mode')
 
 try:
-    import scannersynch.kbutils as kbutils
+    import pyniexp.kbutils as kbutils
 except ImportError:
     print('WARNING: kbutils module is not available --> ', end='')
     print('You cannot emulate buttons')
 
 #### Emulation class for DAQ
 
-class DAQClass:
+class simDAQ:
 
     ## Properies
 
@@ -26,7 +26,7 @@ class DAQClass:
 
 #### Main class
 
-class ScannerSynchClass:
+class ScannerSynch:
     
     ## Properties 
 
@@ -95,7 +95,7 @@ class ScannerSynchClass:
     __BBoxWaitForRealease = False # wait for release instead of press
         
     __isDAQ = 'nidaqmx' in sys.modules
-    __isKb = 'scannersynch.kbutils' in sys.modules # Button emulation (keyboard)
+    __isKb = 'pyniexp.kbutils' in sys.modules # Button emulation (keyboard)
 
     # Dependent properties
     @property
@@ -189,7 +189,7 @@ class ScannerSynchClass:
             self.__EmulSynch = True
             self.__EmulButtons = True
                 
-            self.__DAQ = DAQClass()
+            self.__DAQ = simDAQ()
             self.__DAQ.di_channels = range(1, 1+len(self.__buttList_LT)+len(self.__buttList_NATA) +1)
 
             print('')

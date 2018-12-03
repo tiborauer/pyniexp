@@ -1,17 +1,17 @@
 from setuptools import setup
 
 setup(
-    name='ScannerSynch',
-    url='https://github.com/tiborauer/ScannerSynch-python',
+    name='PyNIExp',
+    url='https://github.com/tiborauer/pyniexp',
     author='Tibor Auer',
     author_email='tibor.auer@gmail.com',
     
-    packages=['scannersynch'],
+    packages=['pyniexp'],
     install_requires=['keyboard','nidaqmx'],
     
     version='0.1',
     license='GPL-3.0',
-    description='Interface for National Instruments PCI 6503 card',
+    description='Python interface for neuroimaging experiments',
     
     long_description=open('README.md').read(),
 )
