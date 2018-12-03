@@ -2,7 +2,7 @@ import math
 import sys
 import time
 
-import utils
+import scannersynch.utils as utils
 
 try:
     import nidaqmx
@@ -11,7 +11,7 @@ except ImportError:
     print('You can run ScannerSynch only in emulation mode')
 
 try:
-    import kbutils
+    import scannersynch.kbutils as kbutils
 except ImportError:
     print('WARNING: kbutils module is not available --> ', end='')
     print('You cannot emulate buttons')
@@ -95,11 +95,12 @@ class ScannerSynchClass:
     __BBoxWaitForRealease = False # wait for release instead of press
         
     __isDAQ = 'nidaqmx' in sys.modules
-    __isKb = 'kbutils' in sys.modules # Button emulation (keyboard)
+    __isKb = 'scannersynch.kbutils' in sys.modules # Button emulation (keyboard)
 
     # Dependent properties
     @property
     def IsValid(self):
+        print(self.__isKb)
         return (not self.__DAQ == None) and (not self.__EmulButtons or (self.__EmulButtons and self.__isKb))
 
     @property
