@@ -1,4 +1,4 @@
-import scannersynch
+from scannersynch import scannersynch
 
 ## Initialise
 # SSO = scannersynch.ScannerSynchClass()
