@@ -7,7 +7,7 @@ from pyniexp import scannersynch
 # SSO = scannersynch.ScannerSynchClass(True,True) % emulate scanner synch pulse and button box
 
 ## Example for scanner synch pulse #1: - Simple case
-def example_scanner():
+def example_scanner_wait():
     SSO = scannersynch.ScannerSynch(True)
     SSO.SetSynchReadoutTime(0.5)
     SSO.TR = 2                 # allows detecting missing pulses
@@ -19,8 +19,8 @@ def example_scanner():
             SSO.TimeOfLastPulse,
             SSO.MeasuredTR))
 
-## Example for scanner synch pulse #2 - Chance for missing pulse
-def example_emulscanner():
+## Example for scanner synch pulse #2 - Background check
+def example_scanner_check():
     import time
     import random
 
@@ -29,7 +29,7 @@ def example_emulscanner():
     SSO.TR = 2                                   # allows detecting missing pulses
     SSO.ResetSynchCount()
     while SSO.SynchCount < 10:                   # until 10 pulses
-        time.sleep(random.randrange(0,100)/1000) # in every 0-100 ms ...
+        time.sleep(random.randrange(0,2000)/1000) # in every 0-100 ms ...
         if SSO.CheckSynch(0.01):                 # ... waits for 10 ms for a pulse
             print('Pulse {}: {:.3f}. Measured TR = {:.3f}s. {} synch pulses has/have been missed'.format(
                 SSO.SynchCount,
@@ -61,6 +61,6 @@ def example_buttons():
             print('#{} Button {} pressed at {:.3f}s'.format(b,SSO.ButtonPresses[b],SSO.TimeOfButtonPresses[b]))
         print('Last: Button {} pressed at {:.3f}s'.format(SSO.LastButtonPress,SSO.TimeOfLastButtonPress))
 
-# example_scanner()
-# example_emulscanner()
-example_buttons()
+# example_scanner_wait()
+example_scanner_check()
+# example_buttons()
