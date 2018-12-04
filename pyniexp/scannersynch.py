@@ -267,7 +267,7 @@ class ScannerSynch:
     def WaitForSynch(self):
         while not self.Synch:
             pass
-        self.__NewSynch()
+        self.__UpdateSynch()
     
     def CheckSynch(self,timeout):
         SynchQuery = self.Clock
@@ -276,10 +276,9 @@ class ScannerSynch:
 
         while (self.Clock - SynchQuery) < timeout:
             if self.Synch:
-                self.__NewSynch()
                 val = True
                 break            
-
+        self.__UpdateSynch()
         return val
 
     ## Buttons
@@ -359,7 +358,7 @@ class ScannerSynch:
 
         # scanner synch pulse emulation
         if self.EmulSynch and self.TR:
-            data[0] = (not self.__SynchCount) or ((t-self.__TOA[0] >= self.TR) and ((t-self.__TOA[0]) % self.TR <= self.PulseWidth))
+            data[0] = (not self.__SynchCount) or (t-self.__TOA[0] >= self.TR) or ((t-self.__TOA[0]) % self.TR <= self.PulseWidth)
  
         # button press emulation (keyboard) via PTB
         if self.EmulButtons:
@@ -376,7 +375,7 @@ class ScannerSynch:
         self.__TOAp = self.__TOA
         self.__TOA = [t if self.__Data[i] else self.__TOA[i] for i in range(0,len(self.__Data))]
 
-    def __NewSynch(self):
+    def __UpdateSynch(self):
         if not self.SynchCount:
             self.ResetClock()
             self.__SynchCount = 1
