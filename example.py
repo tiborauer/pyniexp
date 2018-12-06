@@ -26,16 +26,21 @@ def example_scanner_check():
 
     SSO = scannersynch.ScannerSynch(True)
     SSO.SetSynchReadoutTime(0.5)
-    SSO.TR = 2                                   # allows detecting missing pulses
+    SSO.TR = 2                                    # allows detecting missing pulses
     SSO.ResetSynchCount()
-    while SSO.SynchCount < 10:                   # until 10 pulses
-        time.sleep(random.randrange(0,2000)/1000) # in every 0-100 ms ...
-        if SSO.CheckSynch(0.01):                 # ... waits for 10 ms for a pulse
+    SynchCountp = 0
+    
+    SSO.WaitForSynch()                            # wait for the first pulse
+    while SSO.SynchCount < 10:                    # until 10 pulses
+        time.sleep(random.randrange(0,100)/1000)  # in every 0-500 ms ...
+        SSO.CheckSynch(0.1)                       # ... waits for 100 ms for a pulse
+        if SSO.SynchCount > SynchCountp:
             print('Pulse {}: {:.3f}. Measured TR = {:.3f}s. {} synch pulses has/have been missed'.format(
                 SSO.SynchCount,
                 SSO.TimeOfLastPulse,
                 SSO.MeasuredTR,
                 SSO.MissedSynch))
+            SynchCountp = SSO.SynchCount
 
 ## Example for buttons:
 def example_buttons():
