@@ -50,11 +50,10 @@ class ScannerSynch:
     __SynchCount = 0
     @property
     def SynchCount(self):
-        return self.__SynchCount
-    __MissedSynch = 0
+        return self.__SynchCount + self.MissedSynch
     @property
     def MissedSynch(self):
-        return self.__MissedSynch
+        return max(round((self.Clock - self.__TOAp[0])/self.TR)-1,0) if self.TR else 0
 
     __ButtonPresses = []
     @property
@@ -276,9 +275,10 @@ class ScannerSynch:
 
         while (self.Clock - SynchQuery) < timeout:
             if self.Synch:
+                self.__UpdateSynch()
                 val = True
                 break            
-        self.__UpdateSynch()
+        
         return val
 
     ## Buttons
@@ -358,7 +358,8 @@ class ScannerSynch:
 
         # scanner synch pulse emulation
         if self.EmulSynch and self.TR:
-            data[0] = (not self.__SynchCount) or (t-self.__TOA[0] >= self.TR) or ((t-self.__TOA[0]) % self.TR <= self.PulseWidth)
+            data[0] = (not self.__SynchCount) or ((t-self.__TOA[0] >= self.TR) and ((t-self.__TOA[0]) % self.TR <= self.PulseWidth))
+
  
         # button press emulation (keyboard) via PTB
         if self.EmulButtons:
@@ -373,14 +374,11 @@ class ScannerSynch:
         self.__Datap = self.__Data
         self.__Data = [data[i] if ind[i] else self.__Data[i] for i in range(0,len(self.__Data))]
         self.__TOAp = self.__TOA
-        self.__TOA = [t if self.__Data[i] else self.__TOA[i] for i in range(0,len(self.__Data))]
+        self.__TOA = [t if self.__Data[i] else self.__TOA[i] for i in range(0,len(self.__TOA))]
 
     def __UpdateSynch(self):
-        if not self.SynchCount:
+        if not self.__SynchCount:
             self.ResetClock()
             self.__SynchCount = 1
         else:
-            if self.TR:
-                self.__MissedSynch = 0
-                self.__MissedSynch = round(self.MeasuredTR/self.TR)-1
-            self.__SynchCount = self.SynchCount + 1 + self.MissedSynch
+            self.__SynchCount = self.__SynchCount + 1
