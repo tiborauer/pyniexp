@@ -36,7 +36,7 @@ class ScannerSynch:
 
     # Public properties
     TR = 0 # emulated pulse frequency
-    PulseWidth = 0.005 # emulated pulse width 
+    doCorrection = False # Correct emulated TR based on measurement (counter execution time)
 
     __Keys = []
     @property
@@ -84,6 +84,7 @@ class ScannerSynch:
     __nChannels = 0
         
     __t0 = None # internal timer
+    __TR = 0    # original/target TR
         
     __Data = [] # current data
     __Datap = []# previous data
@@ -119,7 +120,11 @@ class ScannerSynch:
         return self.__TOA[0]
     @property
     def MeasuredTR(self):
-        return (self.__TOA[0] - self.__TOAp[0])/(self.MissedSynch + 1)
+        mTR = (self.__TOA[0] - self.__TOAp[0])/(self.MissedSynch + 1)
+        if mTR and self.doCorrection:
+            if not self.__TR: self.__TR = self.TR # save target TR
+            self.TR = self.TR - (mTR - self.__TR)
+        return mTR
 
     @property
     def Buttons(self):
@@ -270,16 +275,14 @@ class ScannerSynch:
     
     def CheckSynch(self,timeout):
         SynchQuery = self.Clock
-
-        val = False
+        SynchCount0 = self.SynchCount
 
         while (self.Clock - SynchQuery) < timeout:
             if self.Synch:
                 self.__UpdateSynch()
-                val = True
                 break            
         
-        return val
+        return self.SynchCount > SynchCount0
 
     ## Buttons
     def SetButtonReadoutTime(self,t):
@@ -358,8 +361,7 @@ class ScannerSynch:
 
         # scanner synch pulse emulation
         if self.EmulSynch and self.TR:
-            data[0] = (not self.__SynchCount) or ((t-self.__TOA[0] >= self.TR) and ((t-self.__TOA[0]) % self.TR <= self.PulseWidth))
-
+            data[0] = (not self.__SynchCount) or (t-self.__TOA[0] >= self.TR)
  
         # button press emulation (keyboard) via PTB
         if self.EmulButtons:
