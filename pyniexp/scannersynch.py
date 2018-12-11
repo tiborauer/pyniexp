@@ -148,7 +148,7 @@ class ScannerSynch:
     ## Constructor
 
     def __init__(self,*args):
-        DEV = 'SimDev1'  # ToDo: switch for Dev1
+        DEV = 'Dev1'
 
         print('Initialising Scanner Synch...')
         # test environment
