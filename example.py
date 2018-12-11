@@ -1,10 +1,10 @@
 from pyniexp import scannersynch
 
 ## Initialise
-# SSO = scannersynch.ScannerSynchClass()
-# SSO = scannersynch.ScannerSynchClass(True)   % emulate scanner synch pulse
-# SSO = scannersynch.ScannerSynchClass(False,True) % emulate button box
-# SSO = scannersynch.ScannerSynchClass(True,True) % emulate scanner synch pulse and button box
+# SSO = scannersynch.ScannerSynch()
+# SSO = scannersynch.ScannerSynch(True)   % emulate scanner synch pulse
+# SSO = scannersynch.ScannerSynch(False,True) % emulate button box
+# SSO = scannersynch.ScannerSynch(True,True) % emulate scanner synch pulse and button box
 
 ## Example for scanner synch pulse #1: - Simple case
 def example_scanner_wait():
