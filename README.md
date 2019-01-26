@@ -1,2 +1,4 @@
-# ScannerSynch
-Interface for National Instruments PCI 6503 card
+# PyNIExp
+Python interfaces for neuroimaging experiments
+ - National Instruments PCI 6503 card for scanner pulse and button presses (with simulation mode)
+ - UDP transfer
