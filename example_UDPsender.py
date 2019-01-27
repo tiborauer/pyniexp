@@ -21,6 +21,6 @@ udpSender.ConnectForSending()
 
 udpSender.Info()
 
-udpSender.SendData([12,34,56,78,UDP_CONTROL_CHAR])
+udpSender.SendData([12,34,56,78])
 
 udpSender.Close()

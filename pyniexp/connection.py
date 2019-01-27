@@ -84,6 +84,8 @@ class __Connect:
         self.Log('Connection with {:s} is {:s}'.format(self.RemoteAddr,self.Status))
 
     def Close(self):
+        if self.Status == 'ready for sending' and len(self.ControlChar): self.SendData(self.ControlChar)
+
         self._Socket.close()
         self.__Status = 0
         self.Log('Connection closed with {:s}'.format(self.RemoteAddr))
