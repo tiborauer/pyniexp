@@ -31,7 +31,7 @@ class __Connect:
         else:
             return self.IP + " (unconfirmed)"
 
-    __Socket = None
+    _Socket = None
     __isIPConfirmed = False
 
     __iClock = None
@@ -60,19 +60,19 @@ class __Connect:
         print("\tControl character:\t", self.ControlChar)
     
     def ConnectForReceiving(self):
-        self.__Socket.bind((self.IP, self.Port))
+        self._Socket.bind((self.IP, self.Port))
 
         if len(self.ControlChar):
             data = [0]
             while chr(data[0]) != self.ControlChar:
                 while not(self.ReadytoReceive()): pass
-                data, addr= self.__Socket.recvfrom(16)
+                data, addr= self._Socket.recvfrom(16)
                 self.__isIPConfirmed = addr[0] == self.IP
         self.__Status = -1
         self.Log('Connection with {:s} is {:s}'.format(self.RemoteAddr,self.Status))
     
     def ConnectForSending(self):
-        err = self.__Socket.connect_ex(((self.IP, self.Port)))
+        err = self._Socket.connect_ex(((self.IP, self.Port)))
         if not(err):
             self.__Status = 1
             self.__isIPConfirmed = True
@@ -84,23 +84,23 @@ class __Connect:
         self.Log('Connection with {:s} is {:s}'.format(self.RemoteAddr,self.Status))
 
     def Close(self):
-        self.__Socket.close()
+        self._Socket.close()
         self.__Status = 0
         self.Log('Connection closed with {:s}'.format(self.RemoteAddr))
 
     def ReOpen(self,operation='receiving'):
         if not(self.isOpen):
             if operation == 'receiving':
-                self.__Socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                self._Socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 self.ConnectForReceiving()
             elif operation == 'sending':
-                self.__Socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                self._Socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 self.ConnectForSending()
             else:
                 self.Log('ERROR - Unknown operation:{:s}'.format(operation))
 
     def ReadytoReceive(self):
-        return len(select.select([self.__Socket],[],[],0.001)[0]) > 0
+        return len(select.select([self._Socket],[],[],0.001)[0]) > 0
     
     def ReceiveData(self,n=0,dtype='str'):
         if self.Status != 'ready for receiving':
@@ -110,7 +110,7 @@ class __Connect:
         dat = list(); info = ''; EOW = False
         while not(n) or len(dat) < n:
             if self.ReadytoReceive():
-                d = self.__Socket.recv(1024).decode(self.Encoding)
+                d = self._Socket.recv(1024).decode(self.Encoding)
                 EOW = not(len(self.SeparatorChar))
                 if d[-1] == self.SeparatorChar: # strip off separator
                     d = d[0:-1]
@@ -138,7 +138,7 @@ class __Connect:
         n = 0
         for d in dat:
             d = bytes(str(d)+self.SeparatorChar, self.Encoding)
-            self.__Socket.send(d) 
+            self._Socket.send(d) 
             n += 1
         
         return n
@@ -165,4 +165,4 @@ class Udp(__Connect):
     def __init__(self,IP='127.0.0.1',port=1234,encoding='UTF-8',controlChar='#',separatorChar='',timeOut=20):
         super().__init__()
 
-        self.__Socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._Socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
