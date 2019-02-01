@@ -1,6 +1,7 @@
 import math
 import sys
 import time
+import threading
 
 import pyniexp.utils as utils
 
@@ -90,6 +91,7 @@ class ScannerSynch:
     __Datap = []# previous data
     __TOA = [] # time of access 1*n
     __TOAp = []# previous time of access 1*n
+    __threadSynch = None
     __ReadoutTime = [0] # sec to store data before refresh 1*n
     __BBoxReadout = False
     __BBoxWaitForRealease = False # wait for release instead of press
@@ -273,16 +275,14 @@ class ScannerSynch:
             pass
         self.__UpdateSynch()
     
-    def CheckSynch(self,timeout):
-        SynchQuery = self.Clock
-        SynchCount0 = self.SynchCount
+    def SynchDaemon(self):
+        while True:
+            self.WaitForSynch()
 
-        while (self.Clock - SynchQuery) < timeout:
-            if self.Synch:
-                self.__UpdateSynch()
-                break            
-        
-        return self.SynchCount > SynchCount0
+    def StartSynchDaemon(self):
+        self.__threadSynch = threading.Thread(target=self.SynchDaemon, args=())
+        self.__threadSynch.daemon = True
+        self.__threadSynch.start()
 
     ## Buttons
     def SetButtonReadoutTime(self,t):
@@ -363,7 +363,7 @@ class ScannerSynch:
         if self.EmulSynch and self.TR:
             data[0] = (not self.__SynchCount) or (t-self.__TOA[0] >= self.TR)
  
-        # button press emulation (keyboard) via PTB
+        # button press emulation (keyboard)
         if self.EmulButtons:
             nKeys = len(self.Keys)
             if self.__isKb and nKeys:

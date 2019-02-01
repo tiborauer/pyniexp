@@ -22,26 +22,28 @@ def example_scanner_wait():
             SSO.MeasuredTR))
 
 ## Example for scanner synch pulse #2 - Background check
-def example_scanner_check():
+def example_scanner_daemon():
     import time
     import random
 
     SSO = scannersynch.ScannerSynch(True)
     SSO.SetSynchReadoutTime(0.5)
     SSO.TR = 2                                      # allows detecting missing pulses
-    SSO.doCorrection = True                         # allow correction of emulated TR for execution time
+    SSO.doCorrection = True                        # allow correction of emulated TR for execution time
 
+    prevSS = 0
     SSO.ResetSynchCount()
-    SSO.WaitForSynch()                              # wait for the first pulse
+    SSO.StartSynchDaemon()                          # start background monitor
     while SSO.SynchCount < 10:                      # until 10 pulses
-        time.sleep(random.randrange(275,325)/1000)  # run code for 250-350 ms ...
-        if SSO.CheckSynch(0.1):                     # ... waits for 100 ms for a pulse
+        time.sleep(random.randrange(250,350)/1000)  # run code for 250-350 ms ...
+        if SSO.SynchCount > prevSS:
             print('[{:.3f}] Pulse {}: {:.3f}. Measured TR = {:.3f}s. {} synch pulses has/have been missed'.format(
                 SSO.Clock,
                 SSO.SynchCount,
                 SSO.TimeOfLastPulse,
                 SSO.MeasuredTR,
                 SSO.MissedSynch))
+            prevSS = SSO.SynchCount
 
 ## Example for buttons:
 def example_buttons():
@@ -67,6 +69,6 @@ def example_buttons():
             print('#{} Button {} pressed at {:.3f}s'.format(b,SSO.ButtonPresses[b],SSO.TimeOfButtonPresses[b]))
         print('Last: Button {} pressed at {:.3f}s'.format([SSO.Keys[i] for i in SSO.LastButtonPress],SSO.TimeOfLastButtonPress))
 
-example_scanner_wait()
-example_scanner_check()
-example_buttons()
+#example_scanner_wait()
+example_scanner_daemon()
+#example_buttons()
