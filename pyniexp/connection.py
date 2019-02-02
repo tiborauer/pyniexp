@@ -8,6 +8,7 @@ class __Connect:
     ControlChar = '#'
     SeparatorChar = ''
     TimeOut = 20 # s
+    sendTimeStamp = False
     Quiet = False
 
     __Status = 0 # 0 - closed; -1 - open for receiving; 1 - open for sending
@@ -45,8 +46,7 @@ class __Connect:
         self.TimeOut = timeOut
     
     def __del__(self):
-        if self.isOpen:
-            self.Close()
+        self.Close()
     
     def Info(self):
         print(self.__class__.__name__.upper(), "connection")
@@ -80,15 +80,18 @@ class __Connect:
             self.Log('Establishing connection for sending with {:s} failed with error: {:s}'.format(self.RemoteAddr,err))
             return
 
-        if len(self.ControlChar): self.SendData(self.ControlChar)
+        if len(self.ControlChar): 
+            self.sendTimeStamp = False
+            self.SendData(self.ControlChar)
         self.Log('Connection with {:s} is {:s}'.format(self.RemoteAddr,self.Status))
 
     def Close(self):
-        if self.Status == 'ready for sending' and len(self.ControlChar): self.SendData(self.ControlChar)
+        if self.isOpen:
+            if self.Status == 'ready for sending' and len(self.ControlChar): self.SendData(self.ControlChar)
 
-        self._Socket.close()
-        self.__Status = 0
-        self.Log('Connection closed with {:s}'.format(self.RemoteAddr))
+            self._Socket.close()
+            self.__Status = 0
+            self.Log('Connection closed with {:s}'.format(self.RemoteAddr))
 
     def ReOpen(self,operation='receiving'):
         if not(self.isOpen):
@@ -109,6 +112,8 @@ class __Connect:
             self.Log('ERROR - Connection with {:s} is not ready for receiving!'.format(self.RemoteAddr))
             return
 
+        if self.sendTimeStamp: n += 1
+
         dat = list(); info = ''; EOW = False
         while not(n) or len(dat) < n:
             if self.ReadytoReceive():
@@ -122,12 +127,14 @@ class __Connect:
                     break
                 info += d
                 if EOW:
-                    dat.append(eval(dtype)(info))
+                    if self.sendTimeStamp and not(len(dat)): dat.append(datetime.datetime.fromtimestamp(float(info)))
+                    else: dat.append(eval(dtype)(info))
                     info = ''
             else:
                 t0 = datetime.datetime.now()
                 while not(self.ReadytoReceive()) and ((datetime.datetime.now() - t0).total_seconds() < self.TimeOut): pass
                 if not(self.ReadytoReceive()): break
+        
         return dat
 
     def SendData(self,dat):
@@ -136,6 +143,9 @@ class __Connect:
             return
 
         if type(dat) != list: dat = [dat]
+        
+        t = datetime.datetime.now()
+        if self.sendTimeStamp: dat.insert(0,t.timestamp())
 
         n = 0
         for d in dat:
@@ -143,7 +153,7 @@ class __Connect:
             self._Socket.send(d) 
             n += 1
         
-        return n
+        return t, n-self.sendTimeStamp
 
     def Clock(self):
         if not(self.__iClock is None):
