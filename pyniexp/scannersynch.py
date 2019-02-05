@@ -92,6 +92,7 @@ class ScannerSynch:
     __TOA = [] # time of access 1*n
     __TOAp = []# previous time of access 1*n
     __threadSynch = None
+    __threadButtons = None
     __ReadoutTime = [0] # sec to store data before refresh 1*n
     __BBoxReadout = False
     __BBoxWaitForRealease = False # wait for release instead of press
@@ -149,10 +150,13 @@ class ScannerSynch:
 
     ## Constructor
 
-    def __init__(self,*args):
+    def __init__(self,emulSynch=False,emulButtons=False):
         DEV = 'Dev1'
 
         print('Initialising Scanner Synch...')
+        self.__EmulSynch = emulSynch
+        self.__EmulButtons = emulButtons
+
         # test environment
         try:
             D = nidaqmx.system.System.local().devices
@@ -163,7 +167,7 @@ class ScannerSynch:
             print('WARNING: ', sys.exc_info()[0])
             self.__isDAQ = False
 
-        if (len(args)<2 or not args[0] or not args[1]) and self.__isDAQ:
+        if not(self.__EmulSynch) and self.__isDAQ:
             self.__DAQ = nidaqmx.Task()
             # Add channels for scanner pulse
             self.__DAQ.di_channels.add_di_chan(DEV + '/port0/line0') # manual
@@ -180,16 +184,6 @@ class ScannerSynch:
             self.__DAQ.di_channels.add_di_chan(DEV + '/port1/line3')
             self.__DAQ.di_channels.add_di_chan(DEV + '/port1/line4')
             self.__DAQ.di_channels.add_di_chan(DEV + '/port1/line5')
-
-            if len(args) == 2:
-                self.__EmulSynch = args[0]
-                self.__EmulButtons = args[1]
-            elif len(args) == 1:
-                self.__EmulSynch = args[0]
-                self.__EmulButtons = False
-            elif len(args) == 0:
-                self.__EmulSynch = False
-                self.__EmulButtons = False
         else:
             self.__isDAQ = False
             self.__EmulSynch = True
@@ -293,7 +287,7 @@ class ScannerSynch:
         self.__ReadoutTime = [self.__ReadoutTime[0]] + [t]*(len(self.__ReadoutTime)-1)
         self.__BBoxReadout = True
 
-    def WaitForButtonPress(self,*args): # timeout, ind
+    def WaitForButtonPress(self,timeOut=None,indButton=None):
         BBoxQuery = self.Clock
 
         # Reset indicator
@@ -302,22 +296,24 @@ class ScannerSynch:
         self.__LastButtonPress = []    
 
         # timeout
-        if len(args) >= 1 and type(args[0]) == int: timeout = args[0]
+        if type(timeOut) == int: timeout = timeOut
         else: timeout = self.BBoxTimeout
         wait = timeout < 0 # wait until timeout even in case of response
         timeout = abs(timeout)
 
         while ((not self.Buttons or # button pressed
             wait or
-            (len(args) >= 2 and type(args[1]) == int and not any([bp == args[1] for bp in self.LastButtonPress]))) and # corrrct button pressed
+            (type(indButton) == list and not any([any([bp == i for i in indButton]) for bp in self.LastButtonPress]))) and # correct button pressed
             self.Clock - BBoxQuery < timeout):
             if len(self.LastButtonPress):
-                if len(args) >= 2 and type(args[1]) == int and not any([bp == args[1] for bp in self.LastButtonPress]): continue # incorrect button
+                if type(indButton) == list and not any([any([bp == i for i in indButton]) for bp in self.LastButtonPress]): # incorrect button
+                    self.__LastButtonPress = []
+                    continue
                 if len(self.TimeOfButtonPresses) and (self.TimeOfButtonPresses[len(self.TimeOfButtonPresses)-1] == self.TimeOfLastButtonPress): continue # same event
                 self.__ButtonPresses = self.__ButtonPresses + self.LastButtonPress
                 self.__TimeOfButtonPresses = self.__TimeOfButtonPresses + [self.TimeOfLastButtonPress]*len(self.LastButtonPress)
 
-    def WaitForButtonRelease(self,*args):
+    def WaitForButtonRelease(self,timeOut=None,indButton=None):
         # backup settings
         rot = self.__ReadoutTime[1:len(self.__ReadoutTime)] 
         bbro = self.__BBoxReadout 
@@ -326,7 +322,7 @@ class ScannerSynch:
         self.__BBoxWaitForRealease = True
         self.SetButtonBoxReadoutTime(0)
 
-        self.WaitForButtonPress(*args)
+        self.WaitForButtonPress(timeOut, indButton)
             
         # restore settings
         self.__BBoxWaitForRealease = False
@@ -339,7 +335,14 @@ class ScannerSynch:
         self.__LastButtonPress = []
         self.__ButtonPresses = []
         self.__TimeOfButtonPresses = []
-        return (b,t)
+        return b,t
+
+    def WaitForButtonPressInBackground(self,timeout=None,indButton=None):
+        if not(self.__threadButtons is None) and self.__threadButtons.isAlive: self.__threadButtons._delete()
+
+        self.__threadButtons = threading.Thread(target=self.WaitForButtonPress, args=(timeout,indButton))
+        self.__threadButtons.daemon = True
+        self.__threadButtons.start()
 
     ## Low level methods
     def __Refresh(self):
