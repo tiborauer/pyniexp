@@ -54,7 +54,9 @@ class ScannerSynch:
         return self.__SynchCount + self.MissedSynch
     @property
     def MissedSynch(self):
-        return max(round((self.Clock - self.__TOAp[0])/self.TR)-1,0) if self.TR else 0
+        if self.__SynchCount:
+            return max(round((self.Clock - self.__TOAp[0])/self.TR)-1,0) if self.TR else 0
+        else: return 0
 
     __ButtonPresses = []
     @property
