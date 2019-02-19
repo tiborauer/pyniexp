@@ -8,8 +8,8 @@ import time
 # SSO = scannersynch.ScannerSynch(emulSynch=True,emulButtons=True) % emulate scanner synch pulse and button box
 
 ## Example for scanner synch pulse #1: - Simple case
-def example_scanner_wait():
-    SSO = scannersynch.ScannerSynch(emulSynch=True)
+def example_scanner_wait(emulSynch=False):
+    SSO = scannersynch.ScannerSynch(emulSynch=emulSynch)
     SSO.SetSynchReadoutTime(0.5)
     SSO.TR = 2                 # allows detecting missing pulses
 
@@ -23,11 +23,11 @@ def example_scanner_wait():
             SSO.MeasuredTR))
 
 ## Example for scanner synch pulse #2 - Background check
-def example_scanner_daemon():
+def example_scanner_daemon(emulSynch=False):
     import time
     import random
 
-    SSO = scannersynch.ScannerSynch(emulSynch=True)
+    SSO = scannersynch.ScannerSynch(emulSynch=emulSynch)
     SSO.SetSynchReadoutTime(0.5)
     SSO.TR = 2                                      # allows detecting missing pulses
     SSO.doCorrection = True                        # allow correction of emulated TR for execution time
@@ -47,30 +47,31 @@ def example_scanner_daemon():
             prevSS = SSO.SynchCount
 
 ## Example for buttons:
-def example_buttons():
-    SSO = scannersynch.ScannerSynch(emulButtons=True)
+def example_buttons(emulButtons=False):
+    SSO = scannersynch.ScannerSynch(emulButtons=emulButtons)
     SSO.SetButtonReadoutTime(0.25)    # block individual buttons
     # SSO.SetButtonBoxReadoutTime(0.5) # block the whole buttonbox
-    SSO.Keys = ['1','2','3','4']     # emulation Buttons #1-#4 with "1"-"4"
+    if emulButtons: SSO.Keys = ['1','2','3','4']     # emulation Buttons #1-#4 with "1"-"4"
     n = 0
     # SSO.BBoxTimeout = 1.5;           # Wait for button press for 1.5s
     # SSO.BBoxTimeout = -1.5;          # Wait for button press for 1.5s even in case of response
     SSO.ResetClock()
     while n != 10:                   # polls 10 button presses
         print('\n[{:.3f}s] - Press a button of {}!'.format(SSO.Clock,SSO.Keys))
-        # SSO.WaitForButtonPress()     # Wait for any button to be pressed
+        SSO.WaitForButtonPress()     # Wait for any button to be pressed
         # SSO.WaitForButtonRelease()   # Wait for any button to be released
         # SSO.WaitForButtonPress(indButton=[2]) # Wait for Button #3 (=zero-indexed 2)
         # SSO.WaitForButtonPress(timeout=2)     # Wait for any button for 2s (overrides SSO.BBoxTimeout only for this event)
         # SSO.WaitForButtonPress(timeout=-2)    # Wait for any (number of) button(s) for 2s even in case of response (overrides SSO.BBoxTimeout only for this event)
         # SSO.WaitForButtonPress(timeout=2,indButton=[2])   # Wait for Button #3 (=zero-indexed 2) for 2s (overrides SSO.BBoxTimeout only for this event)
         # SSO.WaitForButtonPress(timeout=-2,indButton=[2])  # Wait for (any number of presses of) Button #3 (=zero-indexed 2) for 2s even in case of response (overrides SSO.BBoxTimeout only for this event)
-        SSO.WaitForButtonPressInBackground(timeout=-2,indButton=[0,2]); time.sleep(4)   # Wait for any (number of) buttons #1 and #3 (=zero-indexed 0 and 2) for 2s even in case of response (overrides SSO.BBoxTimeout only for this event) in the background
+        # SSO.WaitForButtonPressInBackground(timeout=-2,indButton=[0,2]); time.sleep(4)   # Wait for any (number of) buttons #1 and #3 (=zero-indexed 0 and 2) for 2s even in case of response (overrides SSO.BBoxTimeout only for this event) in the background
         n = n + 1
         for b in range(0,len(SSO.ButtonPresses)):
             print('#{} Button {} pressed at {:.3f}s'.format(b,SSO.ButtonPresses[b],SSO.TimeOfButtonPresses[b]))
-        print('[{:.3f}s] - Last: Button {} pressed at {:.3f}s'.format(SSO.Clock,[SSO.Keys[i] for i in SSO.LastButtonPress],SSO.TimeOfLastButtonPress))
+        if emulButtons: print('[{:.3f}s] - Last: Button {} pressed at {:.3f}s'.format(SSO.Clock,[SSO.Keys[i] for i in SSO.LastButtonPress],SSO.TimeOfLastButtonPress))
+        else: print('[{:.3f}s] - Last: Button {} pressed at {:.3f}s'.format(SSO.Clock,SSO.LastButtonPress,SSO.TimeOfLastButtonPress))
 
-# example_scanner_wait()
-# example_scanner_daemon()
-example_buttons()
+#example_scanner_wait()
+example_scanner_daemon()
+#example_buttons()
