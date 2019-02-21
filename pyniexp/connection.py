@@ -128,7 +128,11 @@ class __Connect:
                 info += d
                 if EOW:
                     if self.sendTimeStamp and not(len(dat)): dat.append(datetime.datetime.fromtimestamp(float(info)))
-                    else: dat.append(eval(dtype)(info))
+                    else: 
+                        try:
+                            info = eval(dtype)(info)
+                        except ValueError: pass
+                        dat.append(info)
                     info = ''
             else:
                 t0 = datetime.datetime.now()
