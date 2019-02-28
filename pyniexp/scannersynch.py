@@ -48,6 +48,11 @@ class ScannerSynch:
     isInverted = False
 
     # Public read-only properties
+    __nChannels = 0
+    @property
+    def nChannels(self):
+        return self.__nChannels   
+
     __SynchCount = 0
     @property
     def SynchCount(self):
@@ -84,7 +89,6 @@ class ScannerSynch:
     # Private properties
     __DAQ = None
     __Kb = None
-    __nChannels = 0
         
     __t0 = None # internal timer
     __TR = 0    # original/target TR
@@ -210,7 +214,7 @@ class ScannerSynch:
             print('Emulation: ButtonBox is not in use           --> ', end='')
             print('You may need to set Keys!')
 
-        self.nChannels = 1+len(self.__buttList_LT)+len(self.__buttList_NATA)
+        self.__nChannels = len(self.__DAQ.di_channels)
 
         self.__Data = [0] * self.nChannels
         self.__Datap = [0] * self.nChannels
@@ -249,7 +253,7 @@ class ScannerSynch:
 
             self.__Keys = val
             self.__DAQ.di_channels = range(1, 1+len(self.__Keys) +1)
-            self.nChannels = 1+len(self.__Keys)
+            self.__nChannels = 1+len(self.__Keys)
             self.__Data = [0] * self.nChannels
             self.__Datap = [0] * self.nChannels
             self.__ReadoutTime = [self.__ReadoutTime[0]] + [self.__ReadoutTime[1]]*(self.nChannels-1)
