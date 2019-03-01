@@ -1,7 +1,7 @@
-import math
+from math import inf
 import sys
 from time import time
-from multiprocessing import Process, Value, Array
+from multiprocessing import Process, Value, RawValue, RawArray
 
 import pyniexp.utils as utils
 
@@ -35,7 +35,7 @@ class scanner_synch:
     _button_list_NATA = (3, 7, 11, 15, 19, 23, 27, 31, 35, 39) # NATA (2 hands, 10 buttons)
 
     # Public properties
-    buttonbox_timeout = math.inf # second (timeout for WaitForButtonPress)
+    buttonbox_timeout = inf # second (timeout for WaitForButtonPress)
     is_inverted = False
 
     # Public read-only properties
@@ -51,8 +51,9 @@ class scanner_synch:
     # Private properties
     __buttonbox_readout = False
     __process = Process()
+    __buttonbox_onset = -1 # time of calling buttonbox function (anything newer is considered as 'last')
     
-    __readout_time = [0, 0] # sec to store data before refresh 1*n
+    __readout_time = [0.5, 0.5] # sec to store data before refresh 1*n (default 0.5)
     @property
     def readout_time(self):
         return self.__readout_time
@@ -64,7 +65,7 @@ class scanner_synch:
     @property
     def is_valid(self):
         valid = True
-        valid = valid and self.__isDAQ and (not(self.emul_buttons) or (self.emul_buttons and self.__isKb))
+        valid = valid and (self.__isDAQ or (self.emul_buttons and self.emul_buttons))
         if self.emul_synch and not(self.TR):
             print('Emulation: Scanner synch pulse is not in use --> ', end='')
             print('You need to set TR!')
@@ -85,23 +86,29 @@ class scanner_synch:
         self.__emul_buttons = emul_buttons
 
         # test environment
-        try:
-            D = nidaqmx.system.System.local().devices
-            D = [d for d in D if d.name == DEV]
-            D = D[0]
-            D.self_test_device()
-        except:
-            print('WARNING: ', sys.exc_info()[0])
-            self.__isDAQ = False
+        if self.emul_synch or self.emul_buttons:
+            try:
+                D = nidaqmx.system.System.local().devices
+                D = [d for d in D if d.name == DEV]
+                D = D[0]
+                D.self_test_device()
+            except:
+                print('WARNING - DAQ card is not available:', sys.exc_info()[0])
+                self.__isDAQ = False
+                self.__emul_synch = True
+                self.__emul_buttons = True
+        else: self.__isDAQ = False
 
         self._t0 = Value('d',time())      # internal timer
-        self._keep_running = Value('i',1) # internal signal
+        self._keep_running = Value('b',-1) # internal signal (-1: not started, 1: running)
+        self.rate = RawValue('d',0)
         self.start_process()
 
     ## Destructor
     def __del__(self):
         if self._keep_running.value:
             self._keep_running.value = 0
+        print('Process rate (last iteration): {:.3f}s'.format(self.rate.value))
 
     ## Utils
     def start_process(self,max_pulses=MAX_SIGNAL):
@@ -111,13 +118,18 @@ class scanner_synch:
             return
         if self.__process.is_alive():
             self.__process.terminate()
-        self._time_of_synch_pulses = Array('d', [float(math.nan)]*max_pulses)
-        self._state_of_buttonpresses = Array('d', [float(math.nan)]*self.number_of_buttons)
-        self._time_of_buttonpresses = [Array('d', [float(math.nan)]*max_pulses) for n in range(0,self.number_of_buttons)]
+        self._synchpulstimes = RawArray('d', [-1]*max_pulses)
+        self._buttonstates = RawArray('b', [0]*self.number_of_buttons)
+        self._buttonpresstimes = [RawArray('d', [-1]*max_pulses) for n in range(0,self.number_of_buttons)]
         self.__readout_time = [self.__readout_time[0]] + [self.__readout_time[1]]*self.number_of_buttons
         self.__process = Process(target=self._run)
         self.__process.start()
-        print('Done')
+        while not(self.is_alive): pass
+        print('[{:.3f}s] - Process is running'.format(self.clock))
+
+    @property
+    def is_alive(self):
+        return self._keep_running.value == 1
 
     @property
     def clock(self):
@@ -126,7 +138,7 @@ class scanner_synch:
     def reset_clock(self):
         self._t0.value = time()
 
-    __TR = 0    # emulated pulse frequency
+    __TR = 2    # emulated pulse frequency (default 2)
     @property
     def TR(self):
         return self.__TR
@@ -169,10 +181,11 @@ class scanner_synch:
     ## Scanner Pulse
     @property
     def synch_count(self):
-        return sum([not(math.isnan(i)) for i in self._time_of_synch_pulses])
+        return sum([i > -1 for i in self._synchpulstimes])
 
-    def reset_synch_count(self,max_pulses=MAX_SIGNAL):
-        self.start_process(max_pulses)
+    def reset_synch_count(self):
+        for n in range(0,len(self._synchpulstimes)):
+            self._synchpulstimes[n] = -1
     
     @property
     def synch_readout_time(self):
@@ -187,11 +200,11 @@ class scanner_synch:
     
     @property
     def time_of_last_pulse(self):
-        return self._time_of_synch_pulses[self.synch_count-1]
+        return self._synchpulstimes[self.synch_count-1]
     
     @property
     def measured_TR(self):
-        if self.synch_count > 1: return self.time_of_last_pulse - self._time_of_synch_pulses[self.synch_count-2] 
+        if self.synch_count > 1: return self.time_of_last_pulse - self._synchpulstimes[self.synch_count-2] 
         else: return 0
     
     ## Buttons
@@ -202,16 +215,38 @@ class scanner_synch:
     def set_buttonbox_readout_time(self,t):
         self.__readout_time = [self.__readout_time[0]] + [t]*(len(self.__readout_time)-1)
         self.__buttonbox_readout = True
-
+    
     @property
     def _last_button_indices(self):
-        ind = [None]*self.number_of_buttons
-        for n in range(0,self.number_of_buttons):
-            i = sum([not(math.isnan(i)) for i in self._time_of_buttonpresses[n]])
-            if i > 0: ind[n] = i-1
+        return [sum([n > -1 for n in self._buttonpresstimes[b]])-1 for b in range(0,self.number_of_buttons)]
+
+    @property
+    def _time_of_last_buttonpresses(self):
+        return [self._buttonpresstimes[b][self._last_button_indices[b]] for b in range(0,self.number_of_buttons)]
+
+    @property
+    def _all_events(self):
+        e = [(b,n) for b in range(0,self.number_of_buttons) for n in self._buttonpresstimes[b] if n > -1]
+        return sorted(e, key=lambda e: e[1])
+
+    @property
+    def last_events(self):
+        e = [(b,n) for b in range(0,self.number_of_buttons) for n in self._buttonpresstimes[b] if n > self.__buttonbox_onset]
+        return sorted(e, key=lambda e: e[1])
 
     def wait_for_buttonpress(self,timeout=None,ind_button=None):
-        pass
+        BBoxQuery = self.clock
+
+        # Onset
+        self.__buttonbox_onset = max(self._time_of_last_buttonpresses)
+
+        # timeout
+        if timeout is None: timeout = self.buttonbox_timeout
+        wait = timeout < 0 # wait until timeout even in case of response
+        timeout = abs(timeout)
+
+        while not(any([t > self.__buttonbox_onset for t in self._time_of_last_buttonpresses])): # button pressed
+            pass
 
     def wait_for_buttonrelease(self,timeout=None,ind_button=None):
         pass
@@ -219,7 +254,7 @@ class scanner_synch:
     ## Low level methods
     def _run(self):
         # Start DAQ
-        if not(self.emul_synch) and self.__isDAQ:
+        if self.__isDAQ:
             DAQ = nidaqmx.Task()
             # Add channels for scanner pulse
             DAQ.di_channels.add_di_chan(DEV + '/port0/line0') # manual
@@ -237,23 +272,17 @@ class scanner_synch:
             DAQ.di_channels.add_di_chan(DEV + '/port1/line4')
             DAQ.di_channels.add_di_chan(DEV + '/port1/line5')
         else:
-            self.__isDAQ = False
-            self.__emul_synch = True
-            self.__emul_buttons = True
-                
             DAQ = simDAQ()
             DAQ.di_channels = range(1, 1+len(self.__buttons) +1)
-
-            print('')
-            print('WARNING: DAQ card is not in use!')
         
         # Start KB
         if self.emul_buttons: Kb = kbutils.Kb()
     
         self.reset_clock()
-        
+        t0 = self.clock
         while self._keep_running.value:
             t = self.clock
+            self.rate.value = t - t0; t0 = t
 
             # get data
             if self.__isDAQ:
@@ -275,23 +304,24 @@ class scanner_synch:
     
             # - button press emulation (keyboard)
             if self.emul_buttons:
-                nbuttons = len(self.buttons)
-                if self.__isKb and nbuttons:
-                    kbdata = Kb.kbCheck(); keyCode = [k[0] for k in kbdata if k[1] == 'down']
-                    data = [data[0]] + utils.ismember(self.buttons,keyCode)
+                kbdata = Kb.kbCheck(); keyCode = [k[0] for k in kbdata if k[1] == 'down']
+                data = [data[0]] + utils.ismember(self.buttons,keyCode)
 
             # synch pulse
             if not(self.synch_count) or (t-self.time_of_last_pulse >= self.synch_readout_time):
                 if data[0]:
-                    self._time_of_synch_pulses[self.synch_count] = t
+                    self._synchpulstimes[self.synch_count] = t
+            del(data[0])
            
-            #if self.__buttonbox_readout: 
-            #    self.__TOA = [self.__TOA[0]] + [max(self.__TOA[1:len(self.__TOA)])] * (len(self.__TOA)-1)
-            #ind = [t-self.__TOA[i] > self.__ReadoutTime[i] for i in range(0,len(self.__ReadoutTime))]
-            #self.__Datap = self.__Data
-            #self.__Data = [data[i] if ind[i] else self.__Data[i] for i in range(0,len(self.__Data))]
-            #self.__TOAp = self.__TOA
-            #self.__TOA = [t if self.__Data[i] else self.__TOA[i] for i in range(0,len(self.__TOA))]
+            # buttons
+            ToBp = self._time_of_last_buttonpresses
+            if self.__buttonbox_readout: ToBp = [max(ToBp)]*self.number_of_buttons
+            for n in range(0,self.number_of_buttons):
+                self._buttonstates[n] = data[n]
+                if self._buttonstates[n] and (t-ToBp[n] > self.readout_time[n+1]):
+                    self._buttonpresstimes[n][self._last_button_indices[n]+1] = t
+
+            if self._keep_running.value == -1: self._keep_running.value = 1
 
         print('Scanner Synch is closing...')
         if self.__isDAQ:
