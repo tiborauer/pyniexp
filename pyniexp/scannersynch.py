@@ -51,7 +51,6 @@ class scanner_synch:
     # Private properties
     __buttonbox_readout = False
     __process = Process()
-    __buttonbox_onset = -1 # time of calling buttonbox function (anything newer is considered as 'last')
     
     __readout_time = [0.5, 0.5] # sec to store data before refresh 1*n (default 0.5)
     @property
@@ -101,14 +100,12 @@ class scanner_synch:
 
         self._t0 = Value('d',time())      # internal timer
         self._keep_running = Value('b',-1) # internal signal (-1: not started, 1: running)
-        self.rate = RawValue('d',0)
         self.start_process()
 
     ## Destructor
     def __del__(self):
         if self._keep_running.value:
             self._keep_running.value = 0
-        print('Process rate (last iteration): {:.3f}s'.format(self.rate.value))
 
     ## Utils
     def start_process(self,max_pulses=MAX_SIGNAL):
@@ -121,6 +118,8 @@ class scanner_synch:
         self._synchpulstimes = RawArray('d', [-1]*max_pulses)
         self._buttonstates = RawArray('b', [0]*self.number_of_buttons)
         self._buttonpresstimes = [RawArray('d', [-1]*max_pulses) for n in range(0,self.number_of_buttons)]
+        self._select_buttons = RawArray('b',[1]*self.number_of_buttons) # record only selected buttons
+        self._button_record_period = RawArray('d',[0, inf])               # record buttons only in this period
         self.__readout_time = [self.__readout_time[0]] + [self.__readout_time[1]]*self.number_of_buttons
         self.__process = Process(target=self._run)
         self.__process.start()
@@ -225,31 +224,36 @@ class scanner_synch:
         return [self._buttonpresstimes[b][self._last_button_indices[b]] for b in range(0,self.number_of_buttons)]
 
     @property
-    def _all_events(self):
-        e = [(b,n) for b in range(0,self.number_of_buttons) for n in self._buttonpresstimes[b] if n > -1]
+    def buttonpresses(self):
+        e = [(b,n) for b in range(0,self.number_of_buttons) for n in self._buttonpresstimes[b] if n > self._button_record_period[0]]
         return sorted(e, key=lambda e: e[1])
 
-    @property
-    def last_events(self):
-        e = [(b,n) for b in range(0,self.number_of_buttons) for n in self._buttonpresstimes[b] if n > self.__buttonbox_onset]
-        return sorted(e, key=lambda e: e[1])
-
-    def wait_for_buttonpress(self,timeout=None,ind_button=None):
+    def wait_for_button(self,timeout=None,ind_button=None,no_block=False,event_type='press'):
         BBoxQuery = self.clock
 
         # Onset
-        self.__buttonbox_onset = max(self._time_of_last_buttonpresses)
+        self._button_record_period[0] = BBoxQuery
 
-        # timeout
+        # Offset
         if timeout is None: timeout = self.buttonbox_timeout
         wait = timeout < 0 # wait until timeout even in case of response
         timeout = abs(timeout)
+        self._button_record_period[1] = self._button_record_period[0]+timeout
 
-        while not(any([t > self.__buttonbox_onset for t in self._time_of_last_buttonpresses])): # button pressed
-            pass
+        # Select buttons
+        if type(ind_button) != list: ind_button = range(0,self.number_of_buttons)
+        for b in range(0,self.number_of_buttons):
+            self._select_buttons[b] = any([b == n for n in ind_button])
 
-    def wait_for_buttonrelease(self,timeout=None,ind_button=None):
-        pass
+        if no_block: return
+
+        while self.clock - BBoxQuery < timeout:
+            if wait: continue
+            if event_type == 'press' and any([e[1] > self._button_record_period[0] for e in self.buttonpresses]): break # (selected) button pressed
+            if event_type == 'release' and any([not(self._buttonstates[b]) 
+                for b in [e[0] for e in self.buttonpresses if e[1] > self._button_record_period[0]]]): break # (selected) button released                
+        
+        self._button_record_period[1] = self.clock # stop recording
 
     ## Low level methods
     def _run(self):
@@ -282,7 +286,7 @@ class scanner_synch:
         t0 = self.clock
         while self._keep_running.value:
             t = self.clock
-            self.rate.value = t - t0; t0 = t
+            self.rate = t - t0; t0 = t # update rate (for self-diagnostics)
 
             # get data
             if self.__isDAQ:
@@ -314,12 +318,14 @@ class scanner_synch:
             del(data[0])
            
             # buttons
-            ToBp = self._time_of_last_buttonpresses
-            if self.__buttonbox_readout: ToBp = [max(ToBp)]*self.number_of_buttons
-            for n in range(0,self.number_of_buttons):
-                self._buttonstates[n] = data[n]
-                if self._buttonstates[n] and (t-ToBp[n] > self.readout_time[n+1]):
-                    self._buttonpresstimes[n][self._last_button_indices[n]+1] = t
+            if t >= self._button_record_period[0] and t <= self._button_record_period[1]:
+                ToBp = self._time_of_last_buttonpresses
+                if self.__buttonbox_readout: ToBp = [max(ToBp)]*self.number_of_buttons
+                for n in range(0,self.number_of_buttons):
+                    buttonstates0 = self._buttonstates[:]
+                    self._buttonstates[n] = data[n]*self._select_buttons[n]
+                    if self._buttonstates[n] and not(buttonstates0[n]) and (t-ToBp[n] > self.readout_time[n+1]):
+                        self._buttonpresstimes[n][self._last_button_indices[n]+1] = t
 
             if self._keep_running.value == -1: self._keep_running.value = 1
 
@@ -329,3 +335,4 @@ class scanner_synch:
         if self.emul_buttons: 
             Kb.stop()
         print('Done')
+        print('Process rate (last iteration): {:.3f}s'.format(self.rate))

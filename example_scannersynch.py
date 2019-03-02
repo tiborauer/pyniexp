@@ -60,20 +60,20 @@ def example_buttons(emul_buttons=False):
     n = 0
     while n != 10:                   # polls 10 button presses        
         print('\n[{:.3f}s] - Press a button of {}!'.format(SSO.clock,SSO.buttons))
-        SSO.wait_for_buttonpress()     # Wait for any button to be pressed
-        # SSO.WaitForButtonRelease()   # Wait for any button to be released
-        # SSO.WaitForButtonPress(indButton=[2]) # Wait for Button #3 (=zero-indexed 2)
-        # SSO.WaitForButtonPress(timeout=2)     # Wait for any button for 2s (overrides SSO.BBoxTimeout only for this event)
-        # SSO.WaitForButtonPress(timeout=-2)    # Wait for any (number of) button(s) for 2s even in case of response (overrides SSO.BBoxTimeout only for this event)
-        # SSO.WaitForButtonPress(timeout=2,indButton=[2])   # Wait for Button #3 (=zero-indexed 2) for 2s (overrides SSO.BBoxTimeout only for this event)
-        # SSO.WaitForButtonPress(timeout=-2,indButton=[2])  # Wait for (any number of presses of) Button #3 (=zero-indexed 2) for 2s even in case of response (overrides SSO.BBoxTimeout only for this event)
-        # SSO.WaitForButtonPressInBackground(timeout=-2,indButton=[0,2]); time.sleep(4)   # Wait for any (number of) buttons #1 and #3 (=zero-indexed 0 and 2) for 2s even in case of response (overrides SSO.BBoxTimeout only for this event) in the background
+        SSO.wait_for_button()     # Wait for any button to be pressed
+        # SSO.wait_for_button(event_type='release')   # Wait for any button to be released
+        # SSO.wait_for_button(ind_button=[2]) # Wait for Button #3 (=zero-indexed 2)
+        # SSO.wait_for_button(timeout=2)     # Wait for any button for 2s (overrides SSO.BBoxTimeout only for this event)
+        # SSO.wait_for_button(timeout=-2)    # Wait for any (number of) button(s) for 2s even in case of response (overrides SSO.BBoxTimeout only for this event)
+        # SSO.wait_for_button(timeout=2,ind_button=[2])   # Wait for Button #3 (=zero-indexed 2) for 2s (overrides SSO.BBoxTimeout only for this event)
+        # SSO.wait_for_button(timeout=-2,ind_button=[2])  # Wait for (any number of presses of) Button #3 (=zero-indexed 2) for 2s even in case of response (overrides SSO.BBoxTimeout only for this event)
+        # SSO.wait_for_button(timeout=-2,ind_button=[0,2],no_block=True); sleep(4)   # Wait for any (number of) buttons #1 and #3 (=zero-indexed 0 and 2) for 2s even in case of response (overrides SSO.BBoxTimeout only for this event) in the background
         
         n = n + 1
-        for e in range(0,len(SSO.last_events)):
-            print('#{} Button {} pressed at {:.3f}s'.format(e,SSO.last_events[e][0],SSO.last_events[e][1]))
-        #if emulButtons: print('[{:.3f}s] - Last: Button {} pressed at {:.3f}s'.format(SSO.Clock,[SSO.Keys[i] for i in SSO.LastButtonPress],SSO.TimeOfLastButtonPress))
-        #else: print('[{:.3f}s] - Last: Button {} pressed at {:.3f}s'.format(SSO.Clock,SSO.LastButtonPress,SSO.TimeOfLastButtonPress))
+        for e in range(0,len(SSO.buttonpresses)):
+            print('#{} Button {} pressed at {:.3f}s'.format(e,SSO.buttonpresses[e][0],SSO.buttonpresses[e][1]))
+        if emul_buttons: print('[{:.3f}s] - Last: Button \'{}\' pressed at {:.3f}s'.format(SSO.clock,SSO.buttons[SSO.buttonpresses[-1][0]],SSO.buttonpresses[-1][1]))
+        else: print('[{:.3f}s] - Last: Button {} pressed at {:.3f}s'.format(SSO.clock,SSO.buttonpresses[-1][0],SSO.buttonpresses[-1][1]))
 
     SSO = None
 
