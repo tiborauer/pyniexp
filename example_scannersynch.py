@@ -79,7 +79,36 @@ def example_buttons(emul_buttons=False):
 
     SSO = None
 
+def example_scanner_and_buttons(emul=False):
+    SSO = scannersynch.scanner_synch(config='config.json',emul_synch=emul,emul_buttons=emul)
+
+    SSO.set_synch_readout_time(0.5)
+    SSO.TR = 2
+
+    SSO.set_buttonbox_readout_time(0.5)
+    if not(emul): SSO.add_buttonbox('Nata')
+    else: SSO.buttons = ['1','2','3','4'] 
+    SSO.start_process()
+    
+    while SSO.synch_count < 10: # polls 10 pulses
+        print('\n[{:.3f}s] - Press a button of {}!'.format(SSO.clock,SSO.buttons))
+        SSO.wait_for_button(timeout=-1,ind_button=[0,2],no_block=True); 
+        SSO.wait_for_synch()
+        print('[{:.3f}] Pulse {}: {:.3f}. Measured TR = {:.3f}s'.format(
+            SSO.clock,
+            SSO.synch_count,
+            SSO.time_of_last_pulse,
+            SSO.measured_TR))
+
+        for e in range(0,len(SSO.buttonpresses)):
+            print('#{} Button {} pressed at {:.3f}s'.format(e,SSO.buttonpresses[e][0],SSO.buttonpresses[e][1]))
+        if len(SSO.buttonpresses):
+            if emul: print('[{:.3f}s] - Last: Button \'{}\' pressed at {:.3f}s'.format(SSO.clock,SSO.buttons[SSO.buttonpresses[-1][0]],SSO.buttonpresses[-1][1]))
+            else: print('[{:.3f}s] - Last: Button {} pressed at {:.3f}s'.format(SSO.clock,SSO.buttonpresses[-1][0],SSO.buttonpresses[-1][1]))
+
+
 if __name__ == '__main__':
 #    example_scanner_wait(True)    
 #    example_scanner_check(True)
-    example_buttons(True)
+#    example_buttons(True)
+    example_scanner_and_buttons(True)
