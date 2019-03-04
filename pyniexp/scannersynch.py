@@ -23,7 +23,6 @@ class scanner_synch:
     ## Properties 
     # Private properties
     __config = None
-    __buttonbox = []
     __buttonbox_readout = False
     __process = Process()
 
@@ -67,12 +66,14 @@ class scanner_synch:
             print('You need to add at least one buttonbox!')
             valid = valid and False
         
-        if not(valid): print('WARNING: Scanner Synch is not open!')
+        if not(valid): print('Validation: FAILED!')
 
         return valid
 
     ## Constructor
     def __init__(self,config=None,emul_synch=False,emul_buttons=False):
+        self.__buttonbox = []
+
         print('Initialising Scanner Synch...')
         if not(config is None):
             with open(config) as fid:
@@ -89,7 +90,7 @@ class scanner_synch:
         if (self.emul_synch == 0) or (self.emul_buttons == 0):
             try:
                 D = nidaqmx.system.System.local().devices
-                D = [d for d in D if d.name == self._config['DAQ']['Hardware']]
+                D = [d for d in D if d.name == self.__config['DAQ']['Hardware']]
                 D = D[0]
                 D.self_test_device()
             except:
@@ -118,6 +119,7 @@ class scanner_synch:
         if max_pulses is None: max_pulses = self.__config['DAQ']['BufferLength']
 
         print('Starting process...')
+
         if not(self.is_valid): 
             print('You have to start the process manually by calling <object>.start_process()!')
             return
@@ -321,8 +323,8 @@ class scanner_synch:
                 if self.emul_buttons == 0:
                     for bb_ind in range(0,len(self.__buttonbox)):
                         bb_code = utils.binvec2dec([d^self.is_inverted for d in DAQ[bb_ind+1].read()])
-                        if any([bb_code == ign for ign in self.__buttonbox[bb]['Ignore']]): bb_code = -1 # ignore faulty signal
-                        b_data += utils.ismember(self._buttonbox[bb]['ButtonCode'],[bb_code])
+                        if any([bb_code == ign for ign in self.__buttonbox[bb_ind]['Ignore']]): bb_code = -1 # ignore faulty signal
+                        b_data += utils.ismember(self.__buttonbox[bb_ind]['ButtonCode'],[bb_code])
                 elif self.emul_buttons == 1:
                     kb_data = Kb.kbCheck(); key_code = [k[0] for k in kb_data if k[1] == 'down']
                     b_data = utils.ismember(self.buttons,key_code)
@@ -340,7 +342,7 @@ class scanner_synch:
 
         print('Scanner Synch is closing...')
         if self.__isDAQ:
-            DAQ.close()
+            [d.close() for d in DAQ]
         if self.emul_buttons: 
             Kb.stop()
         print('Done')
