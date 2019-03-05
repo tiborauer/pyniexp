@@ -13,9 +13,8 @@ from pyniexp.connection import Tcp
 
 TCP_IP = "127.0.0.1"
 TCP_PORT = 1234
-TCP_SEPARATOR = '#'
 
-sender = Tcp(IP=TCP_IP,port=TCP_PORT,separatorChar=TCP_SEPARATOR)
+sender = Tcp(IP=TCP_IP,port=TCP_PORT)
 
 sender.OpenAsClient()
 sender.sendTimeStamp = True

@@ -1,4 +1,4 @@
-import socket, select, datetime
+import socket, select, datetime, sys
 
 class __Connect:
 
@@ -69,23 +69,7 @@ class __Connect:
         raise NotImplementedError("NYI")
 
     def SendData(self,dat):
-        if not(self.StatusForSending):
-            self.Log('ERROR - Connection with {:s} is not ready for sending!'.format(self.RemoteAddr))
-            return
-
-        if type(dat) != list: dat = [dat]
-        
-        t = datetime.datetime.now()
-        if self.sendTimeStamp: dat.insert(0,t.timestamp())
-
-        n = 0
-        for d in dat:
-            if type(d) != bytes:
-                d = bytes(str(d)+self.SeparatorChar, self.Encoding)
-            self._Socket.send(d) 
-            n += 1
-        
-        return t, n-self.sendTimeStamp
+        raise NotImplementedError("NYI")
 
     def Clock(self):
         if not(self._iClock is None):
@@ -173,6 +157,25 @@ class Udp(__Connect):
             else:
                 self.Log('ERROR - Unknown operation:{:s}'.format(operation))
 
+    def SendData(self,dat):
+        if not(self.StatusForSending):
+            self.Log('ERROR - Connection with {:s} is not ready for sending!'.format(self.RemoteAddr))
+            return
+
+        if type(dat) != list: dat = [dat]
+        
+        t = datetime.datetime.now()
+        if self.sendTimeStamp: dat.insert(0,t.timestamp())
+
+        n = 0
+        for d in dat:
+            if type(d) != bytes:
+                d = bytes(str(d)+self.SeparatorChar, self.Encoding)
+            self._Socket.send(d) 
+            n += 1
+        
+        return t, n-self.sendTimeStamp
+    
     def ReceiveData(self,n=0,dtype='str'):
         if not(self.StatusForReceiving):
             self.Log('ERROR - Connection with {:s} is not ready for receiving!'.format(self.RemoteAddr))
@@ -227,10 +230,13 @@ class Tcp(__Connect):
     def StatusForReceiving(self):
         return self.Status.find('open') != -1
 
-    def __init__(self,IP=None,port=1234,encoding='<I',controlChar='',separatorChar='',timeOut=20):
-        super().__init__(IP,port,encoding,controlChar,separatorChar,timeOut)
+    def __init__(self,IP=None,port=1234,controlChar='',separatorChar='',timeOut=20):
+        super().__init__(IP,port,'',controlChar,separatorChar,timeOut)
 
         self._Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
+        if sys.byteorder == 'little': self.encoding = '<'
+        elif sys.byteorder == 'big': self.encoding = '>'
 
     def OpenAsServer(self):
         self._Socket.bind(('', self.Port))
@@ -247,6 +253,12 @@ class Tcp(__Connect):
         self._Status = 1
         self._isIPConfirmed = True
         self.Log('{:s}; connected to server at {:s}:{:d}'.format(self.Status,self.IP,self.Port))
+
+    def SendData(self,dat):
+        pass
+
+    def ReceiveData(self,n=0,dtype='str'):
+        pass
 
     def Flush(self):
         try:
