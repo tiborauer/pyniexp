@@ -12,19 +12,16 @@
             "Name": "Lumitouch",
             "Channels": [
                 "port0/line2",
-                "port0/line3",
                 "port0/line4",
                 "port0/line5"
             ],
             "ButtonCode":[
                 1,
                 2,
-                4,
-                8
+                4
             ],
             "Ignore":[
-                2,
-                15
+                7
             ]
         },
         {

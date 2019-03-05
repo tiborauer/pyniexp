@@ -102,7 +102,6 @@ class scanner_synch:
 
         self._t0 = Value('d',time())      # internal timer
         self._keep_running = Value('b',-1) # internal signal (-1: not started, 1: running)
-        self.start_process()
 
     ## Destructor
     def __del__(self):
@@ -336,6 +335,7 @@ class scanner_synch:
                         buttonstates0 = self._buttonstates[:]
                         self._buttonstates[n] = b_data[n]*self._select_buttons[n]
                         if self._buttonstates[n] and not(buttonstates0[n]) and (t-ToBp[n] > self.readout_time[n+1]):
+                            print(self._last_button_indices[n]+1)
                             self._buttonpresstimes[n][self._last_button_indices[n]+1] = t
 
             if self._keep_running.value == -1: self._keep_running.value = 1
