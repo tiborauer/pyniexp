@@ -52,7 +52,7 @@ def example_buttons(emul_buttons=False):
     SSO = scannersynch.scanner_synch(config='config.json',emul_synch=-1,emul_buttons=emul_buttons)
     SSO.set_button_readout_time(0.5)        # block individual buttons
     # SSO.set_buttonbox_readout_time(0.5)   # block the whole buttonbox
-    if not(emul_buttons): SSO.add_buttonbox('Lumitouch')
+    if not(emul_buttons): SSO.add_buttonbox('Nata')
     else: SSO.buttons = ['1','2','3','4']   # emulation Buttons #1-#4 with "1"-"4"
     # SSO.buttonbox_timeout = 1.5;          # Wait for button press for 1.5s
     # SSO.buttonbox_timeout = -1.5;         # Wait for button press for 1.5s even in case of response
@@ -108,7 +108,7 @@ def example_scanner_and_buttons(emul=False):
 
 
 if __name__ == '__main__':
-#    example_scanner_wait(True)    
-#    example_scanner_check(True)
-    example_buttons(False)
-#    example_scanner_and_buttons(True)
+#    example_scanner_wait(False)    
+#    example_scanner_check(False)
+#    example_buttons(False)
+    example_scanner_and_buttons(False)
