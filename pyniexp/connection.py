@@ -1,271 +1,295 @@
-import socket, select, datetime, sys, struct
+import socket, sys, struct
+from datetime import datetime
+from select import select
+from pyniexp.utils import clock
 
-class __Connect:
+class __Connect(clock):
 
     @property
-    def Status(self):
+    def status(self):
         raise NotImplementedError("NYI")
 
     @property
-    def StatusForSending(self):
+    def status_for_sending(self):
         raise NotImplementedError("NYI")
 
     @property
-    def StatusForReceiving(self):
+    def status_for_receiving(self):
         raise NotImplementedError("NYI")
 
     @property
-    def isOpen(self):
-        return bool(self._Status)
+    def is_open(self):
+        return bool(self._status)
  
     @property
-    def RemoteAddr(self):
-        if self._isIPConfirmed:
+    def remote_address(self):
+        if self._is_IP_confirmed:
             return self.IP + " (confirmed)"
         else:
             return self.IP + " (unconfirmed)"
+    
+    _control_signal = {'value': '', 'decode': '', 'n_bytes': 0}
+    @property
+    def control_signal(self):
+        val = self._control_signal['value']
+        if type(val) != list: val = [val]
+        return val
+    @control_signal.setter
+    def control_signal(self,val):
+        self._control_signal['value'] = val
+        
+        n = 1
+        if type(val) == list:
+            n = len(val)
+            val = val[0]
+        
+        if type(val) == str: 
+            self._control_signal['n_bytes'] = n*1
+            self._control_signal['decode'] = lambda d: [d.decode(self.encoding)]
+        elif type(val) == int: 
+            self._control_signal['n_bytes'] = n*4
+            self._control_signal['decode'] = lambda d: list(struct.unpack(self.format+str(n)+'i',d))
+        elif type(val) == float: 
+            self._control_signal['n_bytes'] = n*4
+            self._control_signal['decode'] = lambda d: list(struct.unpack(self.format+str(n)+'f',d))
 
-    def __init__(self,IP='127.0.0.1',port=1234,encoding='UTF-8',controlChar='#',separatorChar='',timeOut=20):
+    def __init__(self,IP='127.0.0.1',port=1234,encoding='UTF-8',control_signal='',timeout=20):
+        super().__init__()
+        
         self.IP = IP
-        self.Port = port
-        self.Encoding = encoding
-        self.ControlChar = controlChar
-        self.SeparatorChar = separatorChar
-        self.TimeOut = timeOut
+        self.port = port
+        self.encoding = encoding
+        self.control_signal = control_signal
+        self.timeout = timeout
 
-        self.sendTimeStamp = False
-        self.Quiet = False
+        if sys.byteorder == 'little': self.format = '<'
+        elif sys.byteorder == 'big': self.format = '>'
 
-        self._Socket = None
-        self._Status = 0 # 0 - closed; -1 - open for receiving; 1 - open for sending
-        self._isIPConfirmed = False
+        self.sending_time_stamp = False
+        self.wait_for_controlsignal = False
+        self.quiet = False
 
-        self._iClock = None
+        self._socket = None
+        self._status = 0 # 0 - closed; -1 - open for receiving; 1 - open for sending
+        self._is_IP_confirmed = False
     
     def __del__(self):
-        self.Close()
+        self.close()
     
-    def Info(self):
+    def info(self):
         print(self.__class__.__name__.upper(), "connection")
         print("\tIP:\t\t", self.IP)
-        print("\tPort:\t\t", self.Port)
-        print("\tTime out:\t", self.TimeOut)
-        print("\tStatus:\t\t", self.Status)
+        print("\tport:\t\t", self.port)
+        print("\tTime out:\t", self.timeout)
+        print("\tstatus:\t\t", self.status)
         print("Transfer")
-        print("\tEncoding:\t\t", self.Encoding)
-        print("\tSeparator character:\t", self.SeparatorChar)
-        print("\tControl character:\t", self.ControlChar)
+        print("\tEncoding:\t\t", self.encoding)
+        print("\tControl signal:\t", self.control_signal)
     
-    def Close(self):
-        if self.isOpen:
-            self._Socket.close()
-            self._Status = 0
-            self.Log('Connection closed with {:s}'.format(self.RemoteAddr))
+    def close(self,send_control_signal=True):
+        if self.is_open:
+            if len(self.control_signal) and send_control_signal: 
+                self.sending_time_stamp = False
+                self.send_data(self.control_signal)
+            
+            if self.wait_for_controlsignal: pass
+        
+            self._socket.close()
+            self._status = 0
+            self.log('Connection closed with {:s}'.format(self.remote_address))
     
-    def ReadytoReceive(self):
-        return len(select.select([self._Socket],[],[],0.001)[0]) > 0
+    def ready_to_receive(self):
+        return len(select([self._socket],[],[],0.001)[0]) > 0
 
-    def ReceiveData(self,n=0,dtype='str'):
-        raise NotImplementedError("NYI")
-
-    def SendData(self,dat):
-        raise NotImplementedError("NYI")
-
-    def Clock(self):
-        if not(self._iClock is None):
-            return datetime.datetime.now() - self._iClock
-        else:
-            return None
+    def send_data(self,dat):
+        if not(self.status_for_sending):
+            self.log('ERROR - Connection with {:s} is not ready for sending!'.format(self.remote_address))
+            return
     
-    def ResetClock(self):
-        self._iClock = datetime.datetime.now()
-    
-    def Log(self,msg):
-        if ~self.Quiet | any([msg.find(s) != -1 for s in ['ERROR','WARNING','USER']]):
-            if not(self._iClock is None):
-                t = self.Clock()
-            else:
-                t = datetime.datetime.now()
-            print('[{:s}] {:s}'.format(str(t), msg))
+        if type(dat) != list: dat = [dat]
+        
+        t = datetime.now()
+        if self.sending_time_stamp: dat.insert(0,t.timestamp())
+        
+        for d in dat:
+            if type(d) == str: self._socket.send(bytes(d,'UTF-8'))
+            elif type(d) == int: self._socket.send(struct.pack(self.format+'i',d))
+            elif type(d) == float: self._socket.send(struct.pack(self.format+'f',d))
+            
+        return t, len(dat)-self.sending_time_stamp
+
+    def flush(self):
+        try:
+            self._socket.recv(1024000000000)
+        except:
+            pass
+
+    def log(self,msg):
+        if ~self.quiet | any([msg.find(s) != -1 for s in ['ERROR','WARNING','USER']]):
+            print('[{:.3f}s] {:s}'.format(self.clock, msg))
 
 
 class Udp(__Connect):
     
     @property
-    def Status(self):
-        if self._Status == -1:
+    def status(self):
+        if self._status == -1:
             return 'ready for receiving'
-        elif self._Status == 1:
+        elif self._status == 1:
             return 'ready for sending'
         else: # 0
             return 'closed'
 
     @property
-    def StatusForSending(self):
-        return self.Status == 'ready for sending'
+    def status_for_sending(self):
+        return self.status == 'ready for sending'
 
     @property
-    def StatusForReceiving(self):
-        return self.Status == 'ready for receiving'
+    def status_for_receiving(self):
+        return self.status == 'ready for receiving'
 
-    def __init__(self,IP='127.0.0.1',port=1234,encoding='UTF-8',controlChar='#',separatorChar='',timeOut=20):
-        super().__init__(IP,port,encoding,controlChar,separatorChar,timeOut)
+    def __init__(self,IP='127.0.0.1',port=1234,encoding='UTF-8',control_signal='#',timeout=20):
+        super().__init__(IP,port,encoding,control_signal,timeout)
 
-        self._Socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    def ConnectForReceiving(self):
-        self._Socket.bind((self.IP, self.Port))
+    def connect_for_receiving(self):
+        self._socket.bind((self.IP, self.port))
 
-        if len(self.ControlChar):
+        if len(self.control_signal):
             data = [0]
-            while chr(data[0]) != self.ControlChar:
-                while not(self.ReadytoReceive()): pass
-                data, addr= self._Socket.recvfrom(16)
-                self._isIPConfirmed = addr[0] == self.IP
+            while chr(data[0]) != self.control_signal[0]:
+                while not(self.ready_to_receive()): pass
+                data, addr= self._socket.recvfrom(16)
+                self._is_IP_confirmed = addr[0] == self.IP
         self.IP = addr[0]
-        self._Status = -1
-        self.Log('Connection with {:s} is {:s}'.format(self.RemoteAddr,self.Status))
+        self._status = -1
+        self.log('Connection with {:s} is {:s}'.format(self.remote_address,self.status))
     
-    def ConnectForSending(self):
-        err = self._Socket.connect_ex(((self.IP, self.Port)))
+    def connect_for_sending(self):
+        err = self._socket.connect_ex(((self.IP, self.port)))
         if not(err):
-            self._Status = 1
-            self._isIPConfirmed = True
+            self._status = 1
+            self._is_IP_confirmed = True
         else:
-            self.Log('Establishing connection for sending with {:s} failed with error: {:s}'.format(self.RemoteAddr,err))
+            self.log('Establishing connection for sending with {:s} failed with error: {:s}'.format(self.remote_address,err))
             return
 
-        if len(self.ControlChar): 
-            self.sendTimeStamp = False
-            self.SendData(self.ControlChar)
-        self.Log('Connection with {:s} is {:s}'.format(self.RemoteAddr,self.Status))
+        if len(self.control_signal): 
+            self.sending_time_stamp = False
+            self.send_data(self.control_signal)
+        self.log('Connection with {:s} is {:s}'.format(self.remote_address,self.status))
 
-    def Close(self):
-        if self.isOpen:
-            if self.Status == 'ready for sending' and len(self.ControlChar): self.SendData(self.ControlChar)
-
-            super().Close()
-
-    def ReOpen(self,operation='receiving'):
-        if not(self.isOpen):
+    def reopen(self,operation='receiving'):
+        if not(self.is_open):
             if operation == 'receiving':
-                self._Socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                self.ConnectForReceiving()
+                self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                self.connect_for_receiving()
             elif operation == 'sending':
-                self._Socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                self.ConnectForSending()
+                self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                self.connect_for_sending()
             else:
-                self.Log('ERROR - Unknown operation:{:s}'.format(operation))
+                self.log('ERROR - Unknown operation:{:s}'.format(operation))
 
-    def SendData(self,dat):
-        if not(self.StatusForSending):
-            self.Log('ERROR - Connection with {:s} is not ready for sending!'.format(self.RemoteAddr))
+    def receive_data(self,n=0,dtype='str'):
+        if not(self.status_for_receiving):
+            self.log('ERROR - Connection with {:s} is not ready for receiving!'.format(self.remote_address))
             return
-
-        if type(dat) != list: dat = [dat]
-        
-        t = datetime.datetime.now()
-        if self.sendTimeStamp: dat.insert(0,t.timestamp())
-
-        n = 0
-        for d in dat:
-            if type(d) != bytes:
-                d = bytes(str(d)+self.SeparatorChar, self.Encoding)
-            self._Socket.send(d) 
-            n += 1
-        
-        return t, n-self.sendTimeStamp
     
-    def ReceiveData(self,n=0,dtype='str'):
-        if not(self.StatusForReceiving):
-            self.Log('ERROR - Connection with {:s} is not ready for receiving!'.format(self.RemoteAddr))
-            return
+        dat = []
+        while not(n) or len(dat) < (n+self.sending_time_stamp):
+            if self.ready_to_receive():
 
-        if self.sendTimeStamp: n += 1
+                # check for closing signal
+                try:
+                    if self._control_signal['decode'](self._socket.recv(self._control_signal['n_bytes'], socket.MSG_PEEK)) == self.control_signal:
+                        self.close(self.wait_for_controlsignal)
+                        return dat
+                except: pass
 
-        dat = list(); info = ''; EOW = False
-        while not(n) or len(dat) < n:
-            if self.ReadytoReceive():
-                d = self._Socket.recv(1024).decode(self.Encoding)
-                EOW = not(len(self.SeparatorChar))
-                if d[-1] == self.SeparatorChar: # strip off separator
-                    d = d[0:-1]
-                    EOW = True
-                if d == self.ControlChar: # check for closure
-                    self.Close()
-                    break
-                info += d
-                if EOW:
-                    if self.sendTimeStamp and not(len(dat)): dat.append(datetime.datetime.fromtimestamp(float(info)))
-                    else: 
-                        try:
-                            info = eval(dtype)(info)
-                        except ValueError: pass
-                        dat.append(info)
-                    info = ''
+
+                if self.sending_time_stamp and not(len(dat)):
+                    dat += [datetime.fromtimestamp(struct.unpack(self.format+'1f',self._socket.recv(4))[0])]
+           
+                d = self._socket.recv(1024)
+                if len(d) % 4: dtype = 'str' # Cave: No 4(-8-12-16-...)-char-long string is allowed
+                
+                if dtype == 'str': dat += [d.decode(self.encoding)];
+                elif dtype == 'int': dat += list(struct.unpack(self.format+str(n)+'i',d));
+                elif dtype == 'float': dat += list(struct.unpack(self.format+str(n)+'f',d));
+
             else:
-                t0 = datetime.datetime.now()
-                while not(self.ReadytoReceive()) and ((datetime.datetime.now() - t0).total_seconds() < self.TimeOut): pass
-                if not(self.ReadytoReceive()): break
-        
+                t0 = datetime.now()
+                while not(self.ready_to_receive()) and ((datetime.now() - t0).total_seconds() < self.timeout): pass
+                if not(self.ready_to_receive()): break
         return dat
-
 
 class Tcp(__Connect):
 
     @property
-    def Status(self):
-        if self._Status == -1:
+    def status(self):
+        if self._status == -1:
             return 'open as server'
-        elif self._Status == 1:
+        elif self._status == 1:
             return 'open as client'
         else: # 0
             return 'closed'
 
     @property
-    def StatusForSending(self):
-        return self.Status.find('open') != -1
+    def status_for_sending(self):
+        return self.status.find('open') != -1
 
     @property
-    def StatusForReceiving(self):
-        return self.Status.find('open') != -1
+    def status_for_receiving(self):
+        return self.status.find('open') != -1
 
-    def __init__(self,IP=None,port=1234,encoding='UTF-8',controlChar='',separatorChar='',timeOut=20):
-        super().__init__(IP,port,encoding,controlChar,separatorChar,timeOut)
+    def __init__(self,IP=None,port=1234,encoding='UTF-8',control_signal='',timeout=20):
+        super().__init__(IP,port,encoding,control_signal,timeout)
 
-        self._Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
-        if sys.byteorder == 'little': self.format = '<'
-        elif sys.byteorder == 'big': self.format = '>'
-
-    def OpenAsServer(self):
-        self._Socket.bind(('', self.Port))
-        self._Socket.listen(1)
-        self._Socket, addr = self._Socket.accept()
-        self._Status = -1
+    def open_as_server(self):
+        self._socket.bind(('', self.port))
+        self._socket.listen(1)
+        self._socket, addr = self._socket.accept()
+        self._status = -1
         if not(self.IP is None):
-            self._isIPConfirmed = addr[0] == self.IP
+            self._is_IP_confirmed = addr[0] == self.IP
         self.IP = addr[0]
-        self.Log('{:s}; connected with client at {:s}:{:d}'.format(self.Status,self.IP,addr[1]))
+        self.log('{:s}; connected with client at {:s}:{:d}'.format(self.status,self.IP,addr[1]))
 
-    def OpenAsClient(self):
-        self._Socket.connect((self.IP, self.Port))
-        self._Status = 1
-        self._isIPConfirmed = True
-        self.Log('{:s}; connected to server at {:s}:{:d}'.format(self.Status,self.IP,self.Port))
+    def open_as_client(self):
+        self._socket.connect((self.IP, self.port))
+        self._status = 1
+        self._is_IP_confirmed = True
+        self.log('{:s}; connected to server at {:s}:{:d}'.format(self.status,self.IP,self.port))
+    
+    def receive_data(self,n=0,dtype='str'):
+        if not(self.status_for_receiving):
+            self.log('ERROR - Connection with {:s} is not ready for receiving!'.format(self.remote_address))
+            return
+    
+        dat = []; n_received = 0
+        while not(n) or n_received < (n+self.sending_time_stamp):
+            if self.ready_to_receive():
 
-    def SendData(self,d):
-        if type(d) == str: self._Socket.send(bytes(d,'UTF-8'))
-        elif type(d) == int: self._Socket.send(struct.pack(self.format+'i',d))
-        elif type(d) == float: self._Socket.send(struct.pack(self.format+'f',d))
+                # check for closing signal
+                try:
+                    if self._control_signal['decode'](self._socket.recv(self._control_signal['n_bytes'], socket.MSG_PEEK)) == self.control_signal:
+                        self.close(self.wait_for_controlsignal)
+                        return dat
+                except: pass
 
-    def ReceiveData(self,n=0,dtype='str'):
-        if dtype == 'str': return self._Socket.recv(n).decode('UTF-8')
-        elif dtype == 'int': return list(struct.unpack(self.format+str(n)+'i',self._Socket.recv(4*n)))
-        elif dtype == 'float': return list(struct.unpack(self.format+str(n)+'f',self._Socket.recv(4*n)))
+
+                if self.sending_time_stamp and not(len(dat)):
+                    dat += [datetime.fromtimestamp(struct.unpack(self.format+'1f',self._socket.recv(4))[0])]; n_received += 1
+           
+                if dtype == 'str': dat += [self._socket.recv(n).decode(self.encoding)]; n_received += n
+                elif dtype == 'int': dat += list(struct.unpack(self.format+str(n)+'i',self._socket.recv(4*n))); n_received += 1
+                elif dtype == 'float': dat += list(struct.unpack(self.format+str(n)+'f',self._socket.recv(4*n))); n_received += 1
+            else:
+                t0 = datetime.now()
+                while not(self.ready_to_receive()) and ((datetime.now() - t0).total_seconds() < self.timeout): pass
+                if not(self.ready_to_receive()): break
         
-    def Flush(self):
-        try:
-            self._Socket.recv(1024000000000)
-        except:
-            pass
+        return dat

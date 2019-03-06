@@ -13,15 +13,16 @@ from pyniexp.connection import Tcp
 
 TCP_IP = "127.0.0.1"
 TCP_PORT = 1234
+CONTROL_SIGNAL = [0, 0]
 
-sender = Tcp(IP=TCP_IP,port=TCP_PORT)
+sender = Tcp(IP=TCP_IP,port=TCP_PORT,control_signal=CONTROL_SIGNAL)
 
-sender.OpenAsClient()
-sender.sendTimeStamp = True
+sender.open_as_client()
+sender.sending_time_stamp = True
 
-sender.Info()
+sender.info()
 
-for data in ['a1',34,'b2',78]:
-    sender.SendData(data)
+for data in ['Bas',34,'Reg',78]:
+    sender.send_data(data)
 
-sender.Close()
+sender.close()
