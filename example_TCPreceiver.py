@@ -20,12 +20,9 @@ receiver.sendTimeStamp = True
 
 receiver.Info()
 
-n = 0
-while n < 3:
-    data = receiver.ReceiveData(n=1,dtype='float')
-    
-    #header_size = struct.unpack('<I', s.wait(4)[0])[0]
-
-    n += 1
+print(receiver.ReceiveData(n=2,dtype='str'))
+print(receiver.ReceiveData(n=1,dtype='int'))
+print(receiver.ReceiveData(n=2,dtype='str'))
+print(receiver.ReceiveData(n=1,dtype='int'))
 
 receiver.Close()

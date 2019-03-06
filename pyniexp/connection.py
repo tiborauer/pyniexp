@@ -1,4 +1,4 @@
-import socket, select, datetime, sys
+import socket, select, datetime, sys, struct
 
 class __Connect:
 
@@ -230,13 +230,13 @@ class Tcp(__Connect):
     def StatusForReceiving(self):
         return self.Status.find('open') != -1
 
-    def __init__(self,IP=None,port=1234,controlChar='',separatorChar='',timeOut=20):
-        super().__init__(IP,port,'',controlChar,separatorChar,timeOut)
+    def __init__(self,IP=None,port=1234,encoding='UTF-8',controlChar='',separatorChar='',timeOut=20):
+        super().__init__(IP,port,encoding,controlChar,separatorChar,timeOut)
 
         self._Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
-        if sys.byteorder == 'little': self.encoding = '<'
-        elif sys.byteorder == 'big': self.encoding = '>'
+        if sys.byteorder == 'little': self.format = '<'
+        elif sys.byteorder == 'big': self.format = '>'
 
     def OpenAsServer(self):
         self._Socket.bind(('', self.Port))
@@ -254,12 +254,16 @@ class Tcp(__Connect):
         self._isIPConfirmed = True
         self.Log('{:s}; connected to server at {:s}:{:d}'.format(self.Status,self.IP,self.Port))
 
-    def SendData(self,dat):
-        pass
+    def SendData(self,d):
+        if type(d) == str: self._Socket.send(bytes(d,'UTF-8'))
+        elif type(d) == int: self._Socket.send(struct.pack(self.format+'i',d))
+        elif type(d) == float: self._Socket.send(struct.pack(self.format+'f',d))
 
     def ReceiveData(self,n=0,dtype='str'):
-        pass
-
+        if dtype == 'str': return self._Socket.recv(n).decode('UTF-8')
+        elif dtype == 'int': return list(struct.unpack(self.format+str(n)+'i',self._Socket.recv(4*n)))
+        elif dtype == 'float': return list(struct.unpack(self.format+str(n)+'f',self._Socket.recv(4*n)))
+        
     def Flush(self):
         try:
             self._Socket.recv(1024000000000)
