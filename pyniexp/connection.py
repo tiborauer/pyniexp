@@ -214,9 +214,9 @@ class Udp(__Connect):
                 d = self._socket.recv(1024)
                 if len(d) % 4: dtype = 'str' # Cave: No 4(-8-12-16-...)-char-long string is allowed
                 
-                if dtype == 'str': dat += [d.decode(self.encoding)];
-                elif dtype == 'int': dat += list(struct.unpack(self.format+str(n)+'i',d));
-                elif dtype == 'float': dat += list(struct.unpack(self.format+str(n)+'f',d));
+                if dtype == 'str': dat += [d.decode(self.encoding)]
+                elif dtype == 'int': dat += list(struct.unpack(self.format+str(n)+'i',d))
+                elif dtype == 'float': dat += list(struct.unpack(self.format+str(n)+'f',d))
 
             else:
                 t0 = datetime.now()
@@ -269,7 +269,9 @@ class Tcp(__Connect):
             self.log('ERROR - Connection with {:s} is not ready for receiving!'.format(self.remote_address))
             return
     
-        dat = []; n_received = 0
+        if dtype == 'str': dat = ''
+        else: dat = []
+        n_received = 0
         while not(n) or n_received < (n+self.sending_time_stamp):
             if self.ready_to_receive():
 
@@ -284,9 +286,13 @@ class Tcp(__Connect):
                 if self.sending_time_stamp and not(len(dat)):
                     dat += [datetime.fromtimestamp(struct.unpack(self.format+'1f',self._socket.recv(4))[0])]; n_received += 1
            
-                if dtype == 'str': dat += [self._socket.recv(n).decode(self.encoding)]; n_received += n
-                elif dtype == 'int': dat += list(struct.unpack(self.format+str(n)+'i',self._socket.recv(4*n))); n_received += 1
-                elif dtype == 'float': dat += list(struct.unpack(self.format+str(n)+'f',self._socket.recv(4*n))); n_received += 1
+                if dtype == 'str': dat += self._socket.recv(1).decode(self.encoding)
+                elif dtype == 'uint16': dat += list(struct.unpack(self.format+'H',self._socket.recv(2)))
+                elif dtype == 'int32': dat += list(struct.unpack(self.format+'i',self._socket.recv(4)))
+                elif dtype == 'uint32': dat += list(struct.unpack(self.format+'I',self._socket.recv(4)))
+                elif dtype == 'float': dat += list(struct.unpack(self.format+'f',self._socket.recv(4)))
+                else: dat += [self._socket.recv(1)]
+                n_received += 1
             else:
                 t0 = datetime.now()
                 while not(self.ready_to_receive()) and ((datetime.now() - t0).total_seconds() < self.timeout): pass

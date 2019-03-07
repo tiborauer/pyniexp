@@ -6,7 +6,10 @@ def binvec2dec(binvec):
 
 def ismember(list1, list2):
     return [any([kb == kp for kp in list2]) for kb in list1]
-    
+
+def list_find(str_list, pattern):
+    return [i for i in range(0,len(str_list)) if str_list[i].find(pattern) != -1]
+
 class clock:
     
     def __init__(self):
