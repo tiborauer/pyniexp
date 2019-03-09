@@ -9,7 +9,7 @@ setup(
     packages=['pyniexp'],
     install_requires=['keyboard','nidaqmx'],
     
-    version='0.13.8',
+    version='0.13.9',
     license='GPL-3.0',
     description='Python interface for neuroimaging experiments',
     

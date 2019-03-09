@@ -128,7 +128,7 @@ class __Connect(clock):
         if self.sending_time_stamp: dat.insert(0,t.timestamp())
         
         for d in dat:
-            if type(d) == str: self._socket.send(bytes(d,'UTF-8'))
+            if type(d) == str: self._socket.send(bytes(d,self.encoding))
             else: self._socket.send(self._formats[type(d).__name__]['encode'](d))
             
         return t, len(dat)-self.sending_time_stamp
