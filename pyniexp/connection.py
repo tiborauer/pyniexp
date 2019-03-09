@@ -3,6 +3,10 @@ from datetime import datetime
 from select import select
 from pyniexp.utils import clock
 
+if sys.byteorder == 'little': byteorder = '<'
+elif sys.byteorder == 'big': byteorder = '>'
+
+
 class __Connect(clock):
 
     @property
@@ -47,11 +51,11 @@ class __Connect(clock):
             self._control_signal['n_bytes'] = n*1
             self._control_signal['decode'] = lambda d: [d.decode(self.encoding)]
         elif type(val) == int: 
-            self._control_signal['n_bytes'] = n*4
-            self._control_signal['decode'] = lambda d: list(struct.unpack(self.format+str(n)+'i',d))
+            self._control_signal['n_bytes'] = n*struct.calcsize('i')
+            self._control_signal['decode'] = lambda d: list(struct.unpack(byteorder+str(n)+'i',d))
         elif type(val) == float: 
-            self._control_signal['n_bytes'] = n*4
-            self._control_signal['decode'] = lambda d: list(struct.unpack(self.format+str(n)+'f',d))
+            self._control_signal['n_bytes'] = n*struct.calcsize('f')
+            self._control_signal['decode'] = lambda d: list(struct.unpack(byteorder+str(n)+'f',d))
 
     def __init__(self,IP='127.0.0.1',port=1234,encoding='UTF-8',control_signal='',timeout=20):
         super().__init__()
@@ -62,8 +66,20 @@ class __Connect(clock):
         self.control_signal = control_signal
         self.timeout = timeout
 
-        if sys.byteorder == 'little': self.format = '<'
-        elif sys.byteorder == 'big': self.format = '>'
+        self._formats = {
+            'short': 'h',
+            'ushort': 'H',
+            'int': 'i',
+            'uint': 'I',
+            'float': 'f'
+        }
+        for k in list(self._formats.items()):
+            self._formats[k[0]] = {
+                'format': k[1],
+                'n_bytes': struct.calcsize(k[1]),
+                'encode': lambda d: struct.pack(byteorder+k[1],d),
+                'decode': lambda d: struct.unpack(byteorder+k[1],d)[0]
+            }
 
         self.sending_time_stamp = False
         self.wait_for_controlsignal = False
@@ -113,8 +129,7 @@ class __Connect(clock):
         
         for d in dat:
             if type(d) == str: self._socket.send(bytes(d,'UTF-8'))
-            elif type(d) == int: self._socket.send(struct.pack(self.format+'i',d))
-            elif type(d) == float: self._socket.send(struct.pack(self.format+'f',d))
+            else: self._socket.send(self._formats[type(d).__name__]['encode'](d))
             
         return t, len(dat)-self.sending_time_stamp
 
@@ -209,14 +224,14 @@ class Udp(__Connect):
 
 
                 if self.sending_time_stamp and not(len(dat)):
-                    dat += [datetime.fromtimestamp(struct.unpack(self.format+'1f',self._socket.recv(4))[0])]
+                    dat += [datetime.fromtimestamp(struct.unpack(byteorder+'1f',self._socket.recv(4))[0])]
            
                 d = self._socket.recv(1024)
                 if len(d) % 4: dtype = 'str' # Cave: No 4(-8-12-16-...)-char-long string is allowed
                 
                 if dtype == 'str': dat += [d.decode(self.encoding)]
-                elif dtype == 'int': dat += list(struct.unpack(self.format+str(n)+'i',d))
-                elif dtype == 'float': dat += list(struct.unpack(self.format+str(n)+'f',d))
+                elif dtype == 'int': dat += list(struct.unpack(byteorder+str(n)+'i',d))
+                elif dtype == 'float': dat += list(struct.unpack(byteorder+str(n)+'f',d))
 
             else:
                 t0 = datetime.now()
@@ -225,7 +240,6 @@ class Udp(__Connect):
         return dat
 
 class Tcp(__Connect):
-
     @property
     def status(self):
         if self._status == -1:
@@ -264,7 +278,7 @@ class Tcp(__Connect):
         self._is_IP_confirmed = True
         self.log('{:s}; connected to server at {:s}:{:d}'.format(self.status,self.IP,self.port))
     
-    def receive_data(self,n=0,dtype='str'):
+    def receive_data(self,n=0,dtype=None):
         if not(self.status_for_receiving):
             self.log('ERROR - Connection with {:s} is not ready for receiving!'.format(self.remote_address))
             return
@@ -272,30 +286,33 @@ class Tcp(__Connect):
         if dtype == 'str': dat = ''
         else: dat = []
         n_received = 0
-        while not(n) or n_received < (n+self.sending_time_stamp):
+        while not(n) or n_received < n:
             if self.ready_to_receive():
 
-                # check for closing signal
-                try:
-                    if self._control_signal['decode'](self._socket.recv(self._control_signal['n_bytes'], socket.MSG_PEEK)) == self.control_signal:
-                        self.close(self.wait_for_controlsignal)
-                        return dat
-                except: pass
+                # only at the beginning)
+                if not(n_received):
+                    # - check for closing signal
+                    try:
+                        if self._control_signal['decode'](self._socket.recv(self._control_signal['n_bytes'], socket.MSG_PEEK)) == self.control_signal:
+                            self.close(self.wait_for_controlsignal)
+                            return dat
+                    except: pass
 
-
-                if self.sending_time_stamp and not(len(dat)):
-                    dat += [datetime.fromtimestamp(struct.unpack(self.format+'1f',self._socket.recv(4))[0])]; n_received += 1
+                    # - check for time stamp
+                    if self.sending_time_stamp:
+                        ts = [datetime.fromtimestamp(self._formats['float']['decode'](self._socket.recv(self._formats['float']['n_bytes'])))]
            
-                if dtype == 'str': dat += self._socket.recv(1).decode(self.encoding)
-                elif dtype == 'uint16': dat += list(struct.unpack(self.format+'H',self._socket.recv(2)))
-                elif dtype == 'int32': dat += list(struct.unpack(self.format+'i',self._socket.recv(4)))
-                elif dtype == 'uint32': dat += list(struct.unpack(self.format+'I',self._socket.recv(4)))
-                elif dtype == 'float': dat += list(struct.unpack(self.format+'f',self._socket.recv(4)))
-                else: dat += [self._socket.recv(1)]
+                if dtype is None: dat += [self._socket.recv(1)]
+                elif dtype == 'str': dat += self._socket.recv(1).decode(self.encoding)
+                else: dat += [self._formats[dtype]['decode'](self._socket.recv(self._formats[dtype]['n_bytes']))]
                 n_received += 1
             else:
                 t0 = datetime.now()
                 while not(self.ready_to_receive()) and ((datetime.now() - t0).total_seconds() < self.timeout): pass
                 if not(self.ready_to_receive()): break
         
+        if self.sending_time_stamp:
+            if dtype == 'str': dat = ts + [dat]
+            else: dat = ts + dat
+
         return dat

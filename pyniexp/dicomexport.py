@@ -11,17 +11,17 @@ receiver = Tcp(port=TCP_PORT,control_signal=CONTROL_SIGNAL,encoding='latin-1')
 receiver.open_as_server()
 
 # receive_initial()
-data = receiver.receive_data(n=2,dtype='uint32')
+data = receiver.receive_data(n=2,dtype='uint')
 print(data)
 hdr = receiver.receive_data(n=data[0],dtype='str').split('\n')
 with open('hdr_initial.pkl','wb') as f:
     pickle.dump(hdr, f)
 
 for i in range(0,5):
-    data = receiver.receive_data(n=2,dtype='uint32')
+    data = receiver.receive_data(n=2,dtype='uint')
     print(data)
     hdr = receiver.receive_data(n=data[0],dtype='str').split('\n')
-    img = receiver.receive_data(n=int(data[1]/2),dtype='uint16')
+    img = receiver.receive_data(n=int(data[1]/2),dtype='ushort')
     print(len(img))
 
     with open('hdr_img{:d}.pkl'.format(i),'wb') as f:
