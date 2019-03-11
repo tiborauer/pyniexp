@@ -1,7 +1,9 @@
 from pyniexp.connection import Tcp
 from pyniexp import utils
-import re
+import re#, dicom
 import numpy
+from scipy.linalg import null_space
+from numpy.linalg import det
 
 import pickle
 
@@ -17,19 +19,20 @@ required_fields = [
     'SliceNormalVector'
 ]
 
-class TcpDicom():
+class TcpDicom(Tcp):
     
     def __init__(self,port=5677,control_signal=[0,0]):
+        super().__init__(port=port,control_signal=control_signal,encoding='latin-1') 
+        
         self.header = {}
         self.watch_dir = ''
 
-        # self._receiver = Tcp(port=port,control_signal=control_signal,encoding='latin-1')
-        # self._receiver.open_as_server()
+        # self.open_as_server()
 
     def receive_initial(self,hdr=None):
         if hdr is None:
-            data = self._receiver.receive_data(n=2,dtype='uint')
-            hdr = self._receiver.receive_data(n=data[0],dtype='str').split('\n')
+            data = self.receive_data(n=2,dtype='uint')
+            hdr = self.receive_data(n=data[0],dtype='str').split('\n')
             #with open('hdr_initial.pkl','wb') as f:
             #    pickle.dump(hdr, f)
         
@@ -43,10 +46,9 @@ class TcpDicom():
 
     def receive_scan(self,hdr=None,img=None):
         if hdr is None or img is None:
-            data = self._receiver.receive_data(n=2,dtype='uint')
-            hdr = self._receiver.receive_data(n=data[0],dtype='str').split('\n')
-            img = self._receiver.receive_data(n=int(data[1]/2),dtype='ushort')
-            # print(len(img))
+            data = self.receive_data(n=2,dtype='uint')
+            hdr = self.receive_data(n=data[0],dtype='str').split('\n')
+            img = self.receive_data(n=int(data[1]/2),dtype='ushort')
             # with open('hdr_img{:d}.pkl'.format(i),'wb') as f:
             #    pickle.dump([hdr, img], f)
         if not(self.is_header_complete):
@@ -65,11 +67,11 @@ class TcpDicom():
                 t += get_header_data(hdr,'ColumnVec.dSag')
                 t += get_header_data(hdr,'ColumnVec.dCor')
                 t += get_header_data(hdr,'ColumnVec.dTra')
-                if not(any([i is None for i in t])): self.header['ImageOrientationPatien'] = t
+                if not(any([i is None for i in t])): self.header['ImageOrientationPatient'] = t
                 t = get_header_data(hdr,'DICOM.NoOfCols')[0]
-                if not(t is None): self.header['NoOfCols'] = int(t)
+                if not(t is None): self.header['Columns'] = int(t)
                 t = get_header_data(hdr,'DICOM.NoOfRows')[0]
-                if not(t is None): self.header['NoOfRows'] = int(t)
+                if not(t is None): self.header['Rows'] = int(t)
                 t = get_header_data(hdr,'DICOM.SlcNormVector',multiple=True)
                 if not(any([i is None for i in t])): self.header['SliceNormalVector'] = t
                 t = get_header_data(hdr,'DICOM.MosaicRefAcqTimes',multiple=True)
@@ -110,13 +112,33 @@ def parse_header(hdr):
     hdr['PixelDimensions'] = hdr['PixelSpacing'] + [hdr['SpacingBetweenSlices']]
 
     # Transformation matrix
-    analyze_to_dicom = numpy.concatenate((numpy.diag([1, -1, 1]), numpy.array([0,hdr['AcquisitionMatrix'][1]-1,0]).reshape(-1,1)),axis=1)
+    analyze_to_dicom = numpy.matmul(numpy.concatenate((numpy.concatenate((numpy.diag([1, -1, 1]), numpy.array([0,hdr['AcquisitionMatrix'][1]-1,0]).reshape(-1,1)),axis=1),numpy.array([0, 0, 0, 1]).reshape(1,-1)),axis=0),
+        numpy.concatenate((numpy.eye(4,3), numpy.array([-1, -1, -1, 1]).reshape(-1,1)),axis=1))
+    
+    vox = hdr['PixelDimensions']
+    pos = numpy.array(hdr['ImagePositionPatient']).reshape(-1,1)
+    orient = numpy.array(hdr['ImageOrientationPatient']).reshape(2,3).transpose()
+    orient = numpy.concatenate((orient, null_space(orient.transpose())), axis=1)
+    if det(orient)<0: orient[:,2] = -orient[:,2]
+    dicom_to_patient = numpy.concatenate((numpy.concatenate((numpy.matmul(orient,numpy.diag(vox)),pos),axis=1),numpy.array([0,0,0,1]).reshape(1,-1)),axis=0)
+    truepos = numpy.matmul(dicom_to_patient,numpy.concatenate(((numpy.array([hdr['Columns'],hdr['Rows']])-numpy.array(hdr['AcquisitionMatrix']))/2,numpy.array([0,1]))).reshape(-1,1))
+    dicom_to_patient = numpy.concatenate((numpy.concatenate((numpy.matmul(orient,numpy.diag(vox)),truepos[0:3]),axis=1),numpy.array([0,0,0,1]).reshape(1,-1)),axis=0)
 
+    patient_to_tal = numpy.diag([-1, -1, 1,1])
+
+    mat = numpy.matmul(patient_to_tal, dicom_to_patient, analyze_to_dicom)
+
+    if det(numpy.concatenate((numpy.array(hdr['ImageOrientationPatient']).reshape(2,3).transpose(), numpy.array(hdr['SliceNormalVector']).reshape(-1,1)), axis=1))<0:
+        mat = numpy.matmul(mat,numpy.concatenate((numpy.concatenate((numpy.eye(3),numpy.array([0,0,-(hdr['Dimensions'][2]-1)]).reshape(-1,1)),axis=1),numpy.array([0,0,0,1]).reshape(1,-1)),axis=0))
+
+    hdr['mat'] = mat
     return hdr
 
-if __name__ == "__main__":
-    hdr_ini = pickle.load(open('D:\Private\OneDrive - Royal Holloway University of London\Project\OpenNFT\DICOMExport\hdr_initial.pkl','rb'))
-    hdr = pickle.load(open('D:\Private\OneDrive - Royal Holloway University of London\Project\OpenNFT\DICOMExport\hdr_img0.pkl','rb'))[0]
-    rtd = TcpDicom()
-    rtd.receive_initial(hdr_ini)
-    rtd.receive_scan(hdr,1)
+hdr_ini = pickle.load(open('D:\Private\OneDrive - Royal Holloway University of London\Project\OpenNFT\DICOMExport\hdr_initial.pkl','rb'))
+hdr = pickle.load(open('D:\Private\OneDrive - Royal Holloway University of London\Project\OpenNFT\DICOMExport\hdr_img0.pkl','rb'))[0]
+rtd = TcpDicom()
+rtd.receive_initial(hdr_ini)
+rtd.receive_scan(hdr,1)
+hdr = rtd.header
+hdr['ImagePositionPatient'] = [-578, -576, -39]
+hdr = parse_header(hdr)
