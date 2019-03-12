@@ -67,19 +67,37 @@ class __Connect(clock):
         self.timeout = timeout
 
         self._formats = {
-            'short': 'h',
-            'ushort': 'H',
-            'int': 'i',
-            'uint': 'I',
-            'float': 'f'
-        }
-        for k in list(self._formats.items()):
-            self._formats[k[0]] = {
-                'format': k[1],
-                'n_bytes': struct.calcsize(k[1]),
-                'encode': lambda d: struct.pack(byteorder+k[1],d),
-                'decode': lambda d: struct.unpack(byteorder+k[1],d)[0]
+            'short': {
+                'format':'h',
+                'n_bytes': struct.calcsize('h'),
+                'encode': lambda d: struct.pack('<h',d),
+                'decode': lambda d: struct.unpack('<h',d)[0]
+            },
+            'ushort': {
+                'format':'H',
+                'n_bytes': struct.calcsize('H'),
+                'encode': lambda d: struct.pack('<H',d),
+                'decode': lambda d: struct.unpack('<H',d)[0]
+            },
+            'int': {
+                'format':'i',
+                'n_bytes': struct.calcsize('i'),
+                'encode': lambda d: struct.pack('<i',d),
+                'decode': lambda d: struct.unpack('<i',d)[0]
+            },
+            'uint': {
+                'format':'I',
+                'n_bytes': struct.calcsize('I'),
+                'encode': lambda d: struct.pack('<I',d),
+                'decode': lambda d: struct.unpack('<I',d)[0]
+            },
+            'float': {
+                'format':'f',
+                'n_bytes': struct.calcsize('f'),
+                'encode': lambda d: struct.pack('<f',d),
+                'decode': lambda d: struct.unpack('<f',d)[0]
             }
+        }
 
         self.sending_time_stamp = False
         self.wait_for_controlsignal = False
