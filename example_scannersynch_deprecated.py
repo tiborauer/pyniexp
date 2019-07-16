@@ -3,9 +3,9 @@ import time
 
 ## Initialise
 # SSO = scannersynch.ScannerSynch()
-# SSO = scannersynch.ScannerSynch(emulSynch=True)   % emulate scanner synch pulse
-# SSO = scannersynch.ScannerSynch(emulButtons=True) % emulate button box
-# SSO = scannersynch.ScannerSynch(emulSynch=True,emulButtons=True) % emulate scanner synch pulse and button box
+# SSO = scannersynch.ScannerSynch(emulSynch=True)   # emulate scanner synch pulse
+# SSO = scannersynch.ScannerSynch(emulButtons=True) # emulate button box
+# SSO = scannersynch.ScannerSynch(emulSynch=True,emulButtons=True) # emulate scanner synch pulse and button box
 
 ## Example for scanner synch pulse #1: - Simple case
 def example_scanner_wait(emulSynch=False):
