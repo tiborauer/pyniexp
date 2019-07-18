@@ -235,6 +235,11 @@ class scanner_synch:
         self.__readout_time = [self.__readout_time[0]] + [t]*(len(self.__readout_time)-1)
         self.__buttonbox_readout = True
     
+    def reset_buttons(self):
+        for b in range(0,self.number_of_buttons): 
+            for n in range(0,len(self._buttonpresstimes[b])): 
+                self._buttonpresstimes[b][n] = -1
+
     @property
     def _last_button_indices(self):
         return [sum([n > -1 for n in self._buttonpresstimes[b]])-1 for b in range(0,self.number_of_buttons)]
