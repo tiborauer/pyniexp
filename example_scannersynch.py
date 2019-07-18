@@ -65,11 +65,11 @@ def example_buttons(emul_buttons=False):
         # SSO.wait_for_button() # Wait for any button to be pressed
         # SSO.wait_for_button(event_type='release') # Wait for any button to be released
         # SSO.wait_for_button(ind_button=[2])   # Wait for Button #3 (=zero-indexed 2)
-        # SSO.wait_for_button(timeout=2)        # Wait for any button for 2s (overrides SSO.BBoxTimeout only for this event)
-        # SSO.wait_for_button(timeout=-2)       # Wait for any (number of) button(s) for 2s even in case of response (overrides SSO.BBoxTimeout only for this event)
-        # SSO.wait_for_button(timeout=2,ind_button=[2])     # Wait for Button #3 (=zero-indexed 2) for 2s (overrides SSO.BBoxTimeout only for this event)
-        # SSO.wait_for_button(timeout=-2,ind_button=[2])    # Wait for (any number of presses of) Button #3 (=zero-indexed 2) for 2s even in case of response (overrides SSO.BBoxTimeout only for this event)
-        SSO.wait_for_button(timeout=-2,ind_button=[0,2],no_block=True); sleep(4)    # Wait for any (number of) buttons #1 and #3 (=zero-indexed 0 and 2) for 2s even in case of response (overrides SSO.BBoxTimeout only for this event) in the background
+        # SSO.wait_for_button(timeout=2)        # Wait for any button for 2s (overrides SSO.buttonbox_timeout only for this event)
+        # SSO.wait_for_button(timeout=-2)       # Wait for any (number of) button(s) for 2s even in case of response (overrides SSO.buttonbox_timeout only for this event)
+        # SSO.wait_for_button(timeout=2,ind_button=[2])     # Wait for Button #3 (=zero-indexed 2) for 2s (overrides SSO.buttonbox_timeout only for this event)
+        # SSO.wait_for_button(timeout=-2,ind_button=[2])    # Wait for (any number of presses of) Button #3 (=zero-indexed 2) for 2s even in case of response (overrides SSO.buttonbox_timeout only for this event)
+        SSO.wait_for_button(timeout=-2,ind_button=[0,2],no_block=True); sleep(4)    # Wait for any (number of) buttons #1 and #3 (=zero-indexed 0 and 2) for 2s even in case of response (overrides SSO.buttonbox_timeout only for this event) in the background
         
         n = n + 1
         for e in range(0,len(SSO.buttonpresses)):
