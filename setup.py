@@ -7,9 +7,9 @@ setup(
     author_email='tibor.auer@gmail.com',
     
     packages=['pyniexp'],
-    install_requires=['keyboard','nidaqmx'],
+    install_requires=['keyboard','nidaqmx','loguru'],
     
-    version='0.14.0',
+    version='0.15.0',
     license='GPL-3.0',
     description='Python interface for neuroimaging experiments',
     
