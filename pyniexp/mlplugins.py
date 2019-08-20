@@ -9,11 +9,11 @@ SIG_NEWIMAGE = 10
 
 class imageProcess:
     __process = Process()
-    __image_dimension = None
+    _image_dimension = None
 
     def __init__(self,image_dimension):
-        self.__image_dimension = image_dimension
-        self._buffer = RawArray('d',[0]*np.prod(self.__image_dimension))
+        self._image_dimension = image_dimension
+        self._buffer = RawArray('d',[0]*np.prod(self._image_dimension))
         self._signal = Value('b',SIG_NOTSTARTED)
 
         logger.info('Starting process')
@@ -45,7 +45,7 @@ class imageProcess:
                 logger.info('Process is running')
                 self._signal.value = SIG_RUNNING
             if self._signal.value == SIG_NEWIMAGE:
-                img = np.array(self._buffer).reshape(np.flip(self.__image_dimension,0)).transpose(2,1,0) 
+                img = np.array(self._buffer).reshape(np.flip(self._image_dimension,0)).transpose(2,1,0) 
                 logger.info('New image')
                 self.process(img)
                 self._signal.value = SIG_RUNNING
