@@ -45,7 +45,7 @@ class imageProcess:
                 logger.info('Process is running')
                 self._signal.value = SIG_RUNNING
             if self._signal.value == SIG_NEWIMAGE:
-                img = np.array(self._buffer).reshape(np.flip(self.__image_dimension)).transpose(2,1,0) 
+                img = np.array(self._buffer).reshape(np.flip(self.__image_dimension,0)).transpose(2,1,0) 
                 logger.info('New image')
                 self.process(img)
                 self._signal.value = SIG_RUNNING
