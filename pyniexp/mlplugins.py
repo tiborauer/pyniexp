@@ -11,14 +11,11 @@ class imageProcess:
     __process = Process()
     _image_dimension = None
 
-    def __init__(self,image_dimension):
+    def __init__(self,image_dimension,autostart=True):
         self._image_dimension = image_dimension
         self._buffer = RawArray('d',[0]*np.prod(self._image_dimension))
         self._signal = Value('b',SIG_NOTSTARTED)
-
-        logger.info('Starting process')
-        self.__process = Process(target=self._run)
-        self.__process.start()
+        if autostart: self.start_process()
 
     def __del__(self):
         if self._signal.value != SIG_STOPPED:
@@ -31,6 +28,11 @@ class imageProcess:
         return NotImplemented
     
     # Mechanism
+    def start_process(self):
+        logger.info('Starting process')
+        self.__process = Process(target=self._run)
+        self.__process.start()
+
     def load_image(self,mlImage):
         if not(self.__process.is_alive()):
             logger.exception('Process is not running')
