@@ -10,8 +10,8 @@ from time import sleep
 # SSO = scannersynch.scanner_synch(config='config.json',emul_synch=True,emul_buttons=True) # emulate scanner synch pulse and button box
 
 ## Example for scanner synch pulse #1: - Simple case
-def example_scanner_wait(emul_synch=False):
-    SSO = scannersynch.scanner_synch(config='config.json',emul_synch=emul_synch,emul_buttons=-1)
+def example_scanner_wait(config='config.json',emul_synch=False):
+    SSO = scannersynch.scanner_synch(config=config,emul_synch=emul_synch,emul_buttons=-1)
     SSO.set_synch_readout_time(0.5)
     SSO.TR = 2
     SSO.start_process()
@@ -27,10 +27,10 @@ def example_scanner_wait(emul_synch=False):
     SSO = None
     
 ## Example for scanner synch pulse #2 - Background check
-def example_scanner_check(emul_synch=False):
+def example_scanner_check(config='config.json',emul_synch=False):
     from random import randrange
 
-    SSO = scannersynch.scanner_synch(config='config.json',emul_synch=emul_synch,emul_buttons=-1)
+    SSO = scannersynch.scanner_synch(config=config,emul_synch=emul_synch,emul_buttons=-1)
     SSO.set_synch_readout_time(0.5)
     SSO.TR = 2
     SSO.start_process()
@@ -49,8 +49,8 @@ def example_scanner_check(emul_synch=False):
 
     SSO = None
 
-def example_buttons(emul_buttons=False):
-    SSO = scannersynch.scanner_synch(config='config.json',emul_synch=-1,emul_buttons=emul_buttons)
+def example_buttons(config='config.json',emul_buttons=False):
+    SSO = scannersynch.scanner_synch(config=config,emul_synch=-1,emul_buttons=emul_buttons)
     SSO.set_button_readout_time(0.5)        # block individual buttons
     # SSO.set_buttonbox_readout_time(0.5)   # block the whole buttonbox
     if not(SSO.emul_buttons): SSO.add_buttonbox('Nata')
@@ -62,14 +62,14 @@ def example_buttons(emul_buttons=False):
     n = 0
     while n != 10:              # polls 10 button presses        
         print('\n[{:.3f}s] - Press a button of {}!'.format(SSO.clock,SSO.buttons))
-        # SSO.wait_for_button() # Wait for any button to be pressed
+        SSO.wait_for_button() # Wait for any button to be pressed
         # SSO.wait_for_button(event_type='release') # Wait for any button to be released
         # SSO.wait_for_button(ind_button=[2])   # Wait for Button #3 (=zero-indexed 2)
         # SSO.wait_for_button(timeout=2)        # Wait for any button for 2s (overrides SSO.buttonbox_timeout only for this event)
         # SSO.wait_for_button(timeout=-2)       # Wait for any (number of) button(s) for 2s even in case of response (overrides SSO.buttonbox_timeout only for this event)
         # SSO.wait_for_button(timeout=2,ind_button=[2])     # Wait for Button #3 (=zero-indexed 2) for 2s (overrides SSO.buttonbox_timeout only for this event)
         # SSO.wait_for_button(timeout=-2,ind_button=[2])    # Wait for (any number of presses of) Button #3 (=zero-indexed 2) for 2s even in case of response (overrides SSO.buttonbox_timeout only for this event)
-        SSO.wait_for_button(timeout=-2,ind_button=[0,2],no_block=True); sleep(4)    # Wait for any (number of) buttons #1 and #3 (=zero-indexed 0 and 2) for 2s even in case of response (overrides SSO.buttonbox_timeout only for this event) in the background
+        # SSO.wait_for_button(timeout=-2,ind_button=[0,2],no_block=True); sleep(4)    # Wait for any (number of) buttons #1 and #3 (=zero-indexed 0 and 2) for 2s even in case of response (overrides SSO.buttonbox_timeout only for this event) in the background
         
         n = n + 1
         for e in range(0,len(SSO.buttonpresses)):
@@ -80,8 +80,8 @@ def example_buttons(emul_buttons=False):
 
     SSO = None
 
-def example_scanner_and_buttons(emul=False):
-    SSO = scannersynch.scanner_synch(config='config.json',emul_synch=emul,emul_buttons=emul)
+def example_scanner_and_buttons(config='config.json',emul=False):
+    SSO = scannersynch.scanner_synch(config=config,emul_synch=emul,emul_buttons=emul)
 
     SSO.set_synch_readout_time(0.5)
     SSO.TR = 2
@@ -109,7 +109,8 @@ def example_scanner_and_buttons(emul=False):
 
 
 if __name__ == '__main__':
-#    example_scanner_wait(False)    
-#    example_scanner_check(False)
-#    example_buttons(False)
-    example_scanner_and_buttons(False)
+    config = 'config.json'
+#    example_scanner_wait(config=config,False)    
+#    example_scanner_check(config=config,False)
+    example_buttons(config=config,emul_buttons=False)
+#    example_scanner_and_buttons(config=config,False)
