@@ -55,6 +55,7 @@ def example_buttons(config='config.json',emul_buttons=False):
     # SSO.set_buttonbox_readout_time(0.5)   # block the whole buttonbox
     if not(SSO.emul_buttons): SSO.add_buttonbox('Nata')
     else: SSO.buttons = ['1','2','3','4']   # emulation Buttons #1-#4 with "1"-"4"
+    SSO.control_buttons = ['q']
     # SSO.buttonbox_timeout = 1.5;          # Wait for button press for 1.5s
     # SSO.buttonbox_timeout = -1.5;         # Wait for button press for 1.5s even in case of response
     SSO.start_process()
@@ -77,6 +78,10 @@ def example_buttons(config='config.json',emul_buttons=False):
         if len(SSO.buttonpresses):
             if emul_buttons: print('[{:.3f}s] - Last: Button \'{}\' pressed at {:.3f}s'.format(SSO.clock,SSO.buttons[SSO.buttonpresses[-1][0]],SSO.buttonpresses[-1][1]))
             else: print('[{:.3f}s] - Last: Button {} pressed at {:.3f}s'.format(SSO.clock,SSO.buttonpresses[-1][0],SSO.buttonpresses[-1][1]))
+        if 'q' in SSO.pressed_control_buttons():
+            print('q has been pressed at {:.3f}s'.format(SSO.control_button_time('q')))
+            print('Quitting...')
+            break
 
     SSO = None
 
@@ -109,8 +114,8 @@ def example_scanner_and_buttons(config='config.json',emul=False):
 
 
 if __name__ == '__main__':
-    config = 'config.json'
+    config = r'D:\Projects\pyniexp\config.json'
 #    example_scanner_wait(config=config,False)    
 #    example_scanner_check(config=config,False)
-    example_buttons(config=config,emul_buttons=False)
+    example_buttons(config=config,emul_buttons=True)
 #    example_scanner_and_buttons(config=config,False)

@@ -128,6 +128,7 @@ class scanner_synch:
         self._select_buttons = RawArray('b',[1]*self.number_of_buttons) # record only selected buttons
         self._button_record_period = RawArray('d',[0, inf])               # record buttons only in this period
         self.__readout_time = [self.__readout_time[0]] + [self.__readout_time[1]]*self.number_of_buttons
+        self._control_buttonevent = RawArray('d', [0]*len(self.control_buttons))
         self.__process = Process(target=self._run)
         self.__process.start()
         while not(self.is_alive): pass
@@ -176,7 +177,6 @@ class scanner_synch:
             if self.__process.is_alive():
                 self.__process.terminate()
                 
-            kbutils.kbLayout
             if not all(utils.ismember(val,kbutils.kbLayout)):
                 print('WARNING: Some buttons are not recognised in...')
                 print(kbutils.kbLayout)
@@ -192,6 +192,26 @@ class scanner_synch:
     def number_of_buttons(self):
         if self.emul_buttons: return len(self.buttons)
         else: return sum([len(c['ButtonCode']) for c in self.__buttonbox])
+    
+    __control_buttons = []
+    @property
+    def control_buttons(self):
+        return self.__control_buttons    
+    @control_buttons.setter
+    def control_buttons(self,val):
+        if self.__isKb:
+            if self.__process.is_alive():
+                self.__process.terminate()
+                
+            if not all(utils.ismember(val,kbutils.kbLayout)):
+                print('WARNING: Some buttons are not recognised in...')
+                print(kbutils.kbLayout)
+                return
+
+            self.__control_buttons = val
+
+        else:
+            print('WARNING: "kbutils" is not available')
 
     ## Scanner Pulse
     @property
@@ -283,6 +303,22 @@ class scanner_synch:
                 for b in [e[0] for e in self.buttonpresses if e[1] > self._button_record_period[0]]]): break # (selected) button released                
         
         self._button_record_period[1] = self.clock # stop recording
+    
+    def control_buttonswith(self):
+        return [(self.control_buttons[b],self._control_buttonevent[b]) for b in range(len(self.control_buttons)) if self._control_buttonevent[b]]
+    
+    def pressed_control_buttons(self):
+        return [b[0] for b in self.control_buttonswith()]
+    
+    def control_button_time(self,cb):
+        return [b[1] for b in self.control_buttonswith() if b[0] == cb][0]
+
+    def reset_control_buttons(self,cb=[]):
+        if len(cb):
+            cbs = [b in cb for b in self.control_buttons]
+        else: cbs = [False]*len(self.control_buttons)
+        for b in range(len(self.control_buttons)):
+            self._control_buttonevent[b] = self._control_buttonevent[b] * cbs[b]
 
     ## Low level methods
     def _run(self):
@@ -301,7 +337,7 @@ class scanner_synch:
                     DAQ[-1].di_channels.add_di_chan(self.__config['DAQ']['Hardware'] + '/' + ch)
         
         # Start KB
-        if self.emul_buttons: Kb = kbutils.Kb()
+        if self.emul_buttons or len(self.control_buttons): Kb = kbutils.Kb()
     
         self.reset_clock()
         t0 = self.clock
@@ -341,6 +377,13 @@ class scanner_synch:
                         self._buttonstates[n] = b_data[n]*self._select_buttons[n]
                         if self._buttonstates[n] and not(buttonstates0[n]) and (t-ToBp[n] > self.readout_time[n+1]):
                             self._buttonpresstimes[n][self._last_button_indices[n]+1] = t
+            
+            # Control buttons
+            if len(self.control_buttons):
+                kb_data = Kb.kbCheck(); key_code = [k[0] for k in kb_data if k[1] == 'down']
+                cb_data = utils.ismember(self.control_buttons,key_code)
+                for b in range(len(self.control_buttons)):
+                    if cb_data[b]: self._control_buttonevent[b] = t
 
             if self._keep_running.value == -1: self._keep_running.value = 1
 
