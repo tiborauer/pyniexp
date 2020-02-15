@@ -1,6 +1,6 @@
 {
     "DAQ": {
-        "Hardware": "Dev3"
+        "Hardware": "Dev2"
     },
     "ControlSignal": 0,
     "Channels": [
