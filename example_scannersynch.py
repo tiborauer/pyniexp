@@ -3,14 +3,14 @@ from time import sleep
 
 ## Initialise
 # SSO = scannersynch.scanner_synch() # no config --> emulates canner synch pulse and button box
-# SSO = scannersynch.scanner_synch(config='config.json') # connect to synch pulse and button box according to the config
-# SSO = scannersynch.scanner_synch(config='config.json') # connect to synch pulse and button box according to the config
-# SSO = scannersynch.scanner_synch(config='config.json',emul_synch=True) # emulate scanner synch pulse
-# SSO = scannersynch.scanner_synch(config='config.json',emul_buttons=True) # emulate button box
-# SSO = scannersynch.scanner_synch(config='config.json',emul_synch=True,emul_buttons=True) # emulate scanner synch pulse and button box
+# SSO = scannersynch.scanner_synch(config='config_scanner.json') # connect to synch pulse and button box according to the config
+# SSO = scannersynch.scanner_synch(config='config_scanner.json') # connect to synch pulse and button box according to the config
+# SSO = scannersynch.scanner_synch(config='config_scanner.json',emul_synch=True) # emulate scanner synch pulse
+# SSO = scannersynch.scanner_synch(config='config_scanner.json',emul_buttons=True) # emulate button box
+# SSO = scannersynch.scanner_synch(config='config_scanner.json',emul_synch=True,emul_buttons=True) # emulate scanner synch pulse and button box
 
 ## Example for scanner synch pulse #1: - Simple case
-def example_scanner_wait(config='config.json',emul_synch=False):
+def example_scanner_wait(config='config_scanner.json',emul_synch=False):
     SSO = scannersynch.scanner_synch(config=config,emul_synch=emul_synch,emul_buttons=-1)
     SSO.set_synch_readout_time(0.5)
     SSO.TR = 2
@@ -27,7 +27,7 @@ def example_scanner_wait(config='config.json',emul_synch=False):
     SSO = None
     
 ## Example for scanner synch pulse #2 - Background check
-def example_scanner_check(config='config.json',emul_synch=False):
+def example_scanner_check(config='config_scanner.json',emul_synch=False):
     from random import randrange
 
     SSO = scannersynch.scanner_synch(config=config,emul_synch=emul_synch,emul_buttons=-1)
@@ -49,7 +49,7 @@ def example_scanner_check(config='config.json',emul_synch=False):
 
     SSO = None
 
-def example_buttons(config='config.json',emul_buttons=False):
+def example_buttons(config='config_scanner.json',emul_buttons=False):
     SSO = scannersynch.scanner_synch(config=config,emul_synch=-1,emul_buttons=emul_buttons)
     SSO.set_button_readout_time(0.5)        # block individual buttons
     # SSO.set_buttonbox_readout_time(0.5)   # block the whole buttonbox
@@ -85,7 +85,7 @@ def example_buttons(config='config.json',emul_buttons=False):
 
     SSO = None
 
-def example_scanner_and_buttons(config='config.json',emul=False):
+def example_scanner_and_buttons(config='config_scanner.json',emul=False):
     SSO = scannersynch.scanner_synch(config=config,emul_synch=emul,emul_buttons=emul)
 
     SSO.set_synch_readout_time(0.5)
@@ -114,7 +114,7 @@ def example_scanner_and_buttons(config='config.json',emul=False):
 
 
 if __name__ == '__main__':
-    config = r'D:\Projects\pyniexp\config.json'
+    config = r'D:\Projects\pyniexp\config_scanner.json'
 #    example_scanner_wait(config=config,False)    
 #    example_scanner_check(config=config,False)
     example_buttons(config=config,emul_buttons=True)

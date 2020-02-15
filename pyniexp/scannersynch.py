@@ -71,7 +71,7 @@ class scanner_synch:
         return valid
 
     ## Constructor
-    def __init__(self,config=None,emul_synch=False,emul_buttons=False):
+    def __init__(self,config="config_scanner.json",emul_synch=False,emul_buttons=False):
         self.__buttonbox = []
 
         print('Initialising Scanner Synch...')
