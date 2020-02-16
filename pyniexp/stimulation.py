@@ -103,14 +103,15 @@ class Stimulator:
     def isRunning(self):
         return not(self._DAQ.is_task_done())
 
-    def loadWaveform(self,waveList,waitUntilFinished=False):
-        if waveList is None: waveList = self.waves
-        assert (type(waveList) == list) & (type(waveList[0]) == Waveform), "Input MUST be a list of Waveforms"
-        assert len(waveList) == self.nChannels, "Number of waves ({}) is not equal with number of channels ({})".format(len(waveList),self.nChannels)
-        assert all([d == waveList[0].duration for d in [w.duration for w in waveList]]) & \
-            all([d == waveList[0].samplingRate for d in [w.samplingRate for w in waveList]]), "Waves MUST have the same duration and sampling rate"
-        
-        self.waves = waveList
+    def loadWaveform(self,waveList=None,waitUntilFinished=False):
+        if waveList is None: 
+            waveList = self.waves
+        else:
+            assert (type(waveList) == list) & (type(waveList[0]) == Waveform), "Input MUST be a list of Waveforms"
+            assert len(waveList) == self.nChannels, "Number of waves ({}) is not equal with number of channels ({})".format(len(waveList),self.nChannels)
+            assert all([d == waveList[0].duration for d in [w.duration for w in waveList]]) & \
+                all([d == waveList[0].samplingRate for d in [w.samplingRate for w in waveList]]), "Waves MUST have the same duration and sampling rate"
+            self.waves = waveList
 
         if self.isRunning:
             if waitUntilFinished: self._DAQ.wait_until_done()
