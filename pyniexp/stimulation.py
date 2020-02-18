@@ -1,7 +1,9 @@
-import nidaqmx, json, sys
+import nidaqmx, serial, json, sys
 from numpy import concatenate, vstack, arange, linspace, cos, pi, ones
 from nidaqmx.stream_writers import AnalogMultiChannelWriter
 import matplotlib.pyplot as plt
+from loguru import logger
+from time import sleep
 
 class Waveform:
     SCALING = 2 # actual intensity = amplitude (V) * SCALE (2mA/V)
@@ -127,3 +129,76 @@ class Stimulator:
     
     def stimulate(self):
         self._DAQ.start()
+
+class TI:
+    STATUS = {
+        'DISCONNECTED': 0,
+        'CONNECTED': 1,
+        'LOADED': 2
+    }
+
+    __config = None
+    _serial = None
+    _status = 0
+    wait = 2 #s, wait after commands
+    verbose = True
+
+    @property
+    def status(self):
+        return list(self.STATUS.keys())[list(self.STATUS.values()).index(self._status)]
+
+    def __init__(self,configFile='config_TI.json'):
+        with open(configFile) as config:
+            self.__config = json.load(config)
+        self.channels = self.__config['Channels']
+
+        self._serial = serial.Serial(port=self.__config['Port'],baudrate=self.__config['BaudRate'])
+
+        if self._serial.isOpen():
+            logger.info('TI stimulator is connected (port = {}, BaudRate = {:d})'.format(self.__config['Port'],self.__config['BaudRate']))
+            self._status = self.STATUS['CONNECTED']
+        else:
+            logger.error('Conneciton failed on {}, check port!'.format(self.__config['Port']))
+            self._status = self.STATUS['DISCONNECTED']
+
+    def __del__(self):
+        self.unload()
+        self._serial.close()
+        logger.info('TI stimulator is disconnected')
+
+    def load(self):
+        logger.info('Uploading device parameters')
+        self.sendCommand('DDS 0 {}'.format(self.channels[0]['Freqency']))
+        self.sendCommand('DDS 1 {}'.format(self.channels[1]['Freqency']))
+        self.sendCommand('ChConfig {:d} {:d} {:d} {:d} {:02d} {:02d} {:02d} {:02d}'.format(
+            self.channels[0]['loadA'],self.channels[0]['loadB'],self.channels[1]['loadA'],self.channels[1]['loadB'],
+            self.channels[0]['pinA'],self.channels[0]['pinB'],self.channels[1]['pinA'],self.channels[1]['pinB']
+            ))
+        self._status = self.STATUS['LOADED']
+
+    def unload(self):
+        if self._status != self.STATUS['LOADED']:
+            logger.warning('TI is not loaded')
+            return
+        
+        logger.info('Unloading device')
+        self.sendCommand('ChConfig 00 00 00 00 08 09 10 11')
+        self._status = self.STATUS['CONNECTED']
+
+    def start(self,verbose=None):
+        logger.info('Stimulation started...')
+        self.sendCommand('RampWfm mA 0 {} 0 {} {}'.format(
+            self.channels[0]['Amplitutde'],self.channels[1]['Amplitutde'],self.__config['rampUp']
+            ),verbose=verbose)
+
+    def stop(self,verbose=None):
+        logger.info('Stimulation stopped')
+        self.sendCommand('RampWfm mA {} 0 {} 0 {}'.format(
+            self.channels[0]['Amplitutde'],self.channels[1]['Amplitutde'],self.__config['rampDown']
+            ),verbose=verbose)
+
+    def sendCommand(self,cmd,verbose=None):
+        if verbose is None: verbose = self.verbose
+        if verbose: logger.info(cmd)
+        self._serial.write((cmd+'\r').encode())
+        sleep(self.wait)
