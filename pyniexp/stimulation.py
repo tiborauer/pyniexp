@@ -147,12 +147,23 @@ class TI:
     def status(self):
         return list(self.STATUS.keys())[list(self.STATUS.values()).index(self._status)]
 
+    @property
+    def amplitude(self):
+        return [ch['Amplitutde'] for ch in self.channels]
+
+    @amplitude.setter
+    def amplitude(self,val):
+        self.channels[0]['Amplitutde'] = val[0]
+        self.channels[1]['Amplitutde'] = val[1]
+
     def __init__(self,configFile='config_TI.json'):
         with open(configFile) as config:
             self.__config = json.load(config)
+        self.port = self.__config['Port']
         self.channels = self.__config['Channels']
 
-        self._serial = serial.Serial(port=self.__config['Port'],baudrate=self.__config['BaudRate'])
+    def connect(self):
+        self._serial = serial.Serial(port=self.port,baudrate=self.__config['BaudRate'])
 
         if self._serial.isOpen():
             logger.info('TI stimulator is connected (port = {}, BaudRate = {:d})'.format(self.__config['Port'],self.__config['BaudRate']))

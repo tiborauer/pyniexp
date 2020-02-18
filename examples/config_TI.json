@@ -1,5 +1,5 @@
 {
-    "Port": "COM6",
+    "Port": "COM5",
     "BaudRate": 115200,
     
     "rampUp": 5000,
@@ -7,17 +7,17 @@
     "Channels": [
         {
             "Freqency": 2000,
-            "Amplitutde": 1,
-            "loadA": 10,
-            "loadB": 20,
+            "Amplitutde": 2,
+            "loadA": 32,
+            "loadB": 32,
             "pinA": 1,  
             "pinB": 2
         },
         {
             "Freqency": 2005,
             "Amplitutde": 2,
-            "loadA": 30,
-            "loadB": 40,
+            "loadA": 32,
+            "loadB": 32,
             "pinA": 3,  
             "pinB": 4
         }
