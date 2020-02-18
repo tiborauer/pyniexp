@@ -134,7 +134,8 @@ class TI:
     STATUS = {
         'DISCONNECTED': 0,
         'CONNECTED': 1,
-        'LOADED': 2
+        'LOADED': 2,
+        'RUNNING': 3
     }
 
     __config = None
@@ -173,6 +174,7 @@ class TI:
             self._status = self.STATUS['DISCONNECTED']
 
     def __del__(self):
+        self.stop()
         self.unload()
         self._serial.close()
         logger.info('TI stimulator is disconnected')
@@ -188,7 +190,7 @@ class TI:
         self._status = self.STATUS['LOADED']
 
     def unload(self):
-        if self._status != self.STATUS['LOADED']:
+        if self.status != 'LOADED':
             logger.warning('TI is not loaded')
             return
         
@@ -201,8 +203,12 @@ class TI:
         self.sendCommand('RampWfm mA 0 {} 0 {} {}'.format(
             self.channels[0]['Amplitutde'],self.channels[1]['Amplitutde'],self.__config['rampUp']
             ),verbose=verbose)
+        self._status = self.STATUS['RUNNING']
 
     def stop(self,verbose=None):
+        if self.status != 'RUNNING': 
+            logger.warning('Stimulation is not running')
+            return
         logger.info('Stimulation stopped')
         self.sendCommand('RampWfm mA {} 0 {} 0 {}'.format(
             self.channels[0]['Amplitutde'],self.channels[1]['Amplitutde'],self.__config['rampDown']
