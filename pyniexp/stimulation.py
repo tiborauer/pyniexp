@@ -4,6 +4,7 @@ from nidaqmx.stream_writers import AnalogMultiChannelWriter
 import matplotlib.pyplot as plt
 from loguru import logger
 from time import sleep
+from utils import Status
 
 class Waveform:
     SCALING = 2 # actual intensity = amplitude (V) * SCALE (2mA/V)
@@ -97,13 +98,16 @@ class Stimulator:
 
     def close(self):
         if self._DAQ is None: return
-        if self.isRunning: self._DAQ.stop()
+        if self.status == Status.RUNNING: self._DAQ.stop()
         self._DAQ.close()
         self._DAQ = None
 
     @property
-    def isRunning(self):
-        return not(self._DAQ.is_task_done())
+    def status(self):
+        if self._DAQ is None: return Status.DISCONNECTED
+        elif len(self.waves) == 0: return Status.CONNECTED
+        elif self._DAQ.is_task_done(): return Status.STOPPED
+        else: return Status.RUNNING
 
     def loadWaveform(self,waveList=None,waitUntilFinished=False):
         if waveList is None: 
@@ -115,7 +119,7 @@ class Stimulator:
                 all([d == waveList[0].samplingRate for d in [w.samplingRate for w in waveList]]), "Waves MUST have the same duration and sampling rate"
             self.waves = waveList
 
-        if self.isRunning:
+        if self.status == Status.RUNNING:
             if waitUntilFinished: self._DAQ.wait_until_done()
             else: self.initialize()
         else: self._DAQ.stop()
@@ -131,22 +135,13 @@ class Stimulator:
         self._DAQ.start()
 
 class TI:
-    STATUS = {
-        'DISCONNECTED': 0,
-        'CONNECTED': 1,
-        'LOADED': 2,
-        'RUNNING': 3
-    }
 
     __config = None
     _serial = None
-    _status = 0
-    wait = 2 #s, wait after commands
+    status = Status.DISCONNECTED
+    wait = 1 #s, wait after commands
     verbose = True
-
-    @property
-    def status(self):
-        return list(self.STATUS.keys())[list(self.STATUS.values()).index(self._status)]
+    emulate = False
 
     @property
     def amplitude(self):
@@ -163,21 +158,21 @@ class TI:
         self.port = self.__config['Port']
         self.channels = self.__config['Channels']
 
-    def connect(self):
-        self._serial = serial.Serial(port=self.port,baudrate=self.__config['BaudRate'])
-
-        if self._serial.isOpen():
-            logger.info('TI stimulator is connected (port = {}, BaudRate = {:d})'.format(self.__config['Port'],self.__config['BaudRate']))
-            self._status = self.STATUS['CONNECTED']
-        else:
-            logger.error('Conneciton failed on {}, check port!'.format(self.__config['Port']))
-            self._status = self.STATUS['DISCONNECTED']
-
     def __del__(self):
         self.stop()
         self.unload()
         self._serial.close()
         logger.info('TI stimulator is disconnected')
+
+    def connect(self):
+        self._serial = serial.Serial(port=self.port,baudrate=self.__config['BaudRate'])
+
+        if self._serial.isOpen():
+            logger.info('TI stimulator is connected (port = {}, BaudRate = {:d})'.format(self.__config['Port'],self.__config['BaudRate']))
+            self.status = Status.CONNECTED
+        else:
+            logger.error('Conneciton failed on {}, check port!'.format(self.__config['Port']))
+            self.status = Status.DISCONNECTED
 
     def load(self):
         logger.info('Uploading device parameters')
@@ -187,35 +182,34 @@ class TI:
             self.channels[0]['loadA'],self.channels[0]['loadB'],self.channels[1]['loadA'],self.channels[1]['loadB'],
             self.channels[0]['pinA'],self.channels[0]['pinB'],self.channels[1]['pinA'],self.channels[1]['pinB']
             ))
-        self._status = self.STATUS['LOADED']
+        self.status = Status.CONFIGURED
 
     def unload(self):
-        if self.status != 'LOADED':
+        if self.status != Status.CONFIGURED:
             logger.warning('TI is not loaded')
             return
         
         logger.info('Unloading device')
         self.sendCommand('ChConfig 00 00 00 00 08 09 10 11')
-        self._status = self.STATUS['CONNECTED']
+        self.status = Status.UNCONFIGURED
 
-    def start(self,verbose=None):
+    def start(self,nowait=False,verbose=None):
+        if self.amplitude == [0,0]:
+            self.amplitude = [ch['Amplitutde'] for ch in self.__config['Channels']]
         logger.info('Stimulation started...')
-        self.sendCommand('RampWfm mA 0 {} 0 {} {}'.format(
-            self.channels[0]['Amplitutde'],self.channels[1]['Amplitutde'],self.__config['rampUp']
-            ),verbose=verbose)
-        self._status = self.STATUS['RUNNING']
+        self.sendCommand('RampWfm mA 0 {} 0 {} {}'.format(*self.amplitude,self.__config['rampUp']),nowait=nowait,verbose=verbose)
+        self.status = Status.RUNNING
 
-    def stop(self,verbose=None):
-        if self.status != 'RUNNING': 
+    def stop(self,nowait=False,verbose=None):
+        if self.status != Status.RUNNING: 
             logger.warning('Stimulation is not running')
             return
         logger.info('Stimulation stopped')
-        self.sendCommand('RampWfm mA {} 0 {} 0 {}'.format(
-            self.channels[0]['Amplitutde'],self.channels[1]['Amplitutde'],self.__config['rampDown']
-            ),verbose=verbose)
+        self.sendCommand('RampWfm mA {} 0 {} 0 {}'.format(*self.amplitude,self.__config['rampDown']),nowait=nowait,verbose=verbose)
+        self.status = Status.STOPPED
 
-    def sendCommand(self,cmd,verbose=None):
+    def sendCommand(self,cmd,nowait=False,verbose=None):
         if verbose is None: verbose = self.verbose
         if verbose: logger.info(cmd)
-        self._serial.write((cmd+'\r').encode())
-        sleep(self.wait)
+        if not(self.emulate): self._serial.write((cmd+'\r').encode())
+        if not(nowait): sleep(self.wait)

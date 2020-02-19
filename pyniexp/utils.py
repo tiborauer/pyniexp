@@ -1,5 +1,14 @@
 from time import time
 from multiprocessing import Value
+from enum import Enum
+
+class Status(Enum):
+    DISCONNECTED = 0
+    CONNECTED = 1
+    UNCONFIGURED = 1
+    CONFIGURED = 2
+    STOPPED = 2
+    RUNNING = 3
 
 def binvec2dec(binvec):
     return sum([binvec[i]*(2**i) for i in range(0,len(binvec))])
