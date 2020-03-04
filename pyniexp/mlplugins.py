@@ -1,6 +1,7 @@
 from numpy import array, prod, flip
 from multiprocessing import Process, Value, RawArray
 from loguru import logger
+from matlab import double
 
 SIG_NOTSTARTED = -1
 SIG_RUNNING = 1
@@ -35,6 +36,11 @@ class dataProcess:
         if not(self.__process.is_alive()):
             logger.exception('Process is not running')
             return
+
+        if type(mlData) == double: # matlab array
+            mlData = mlData._data.tolist()
+        elif type(mlData) == float: # single value
+            mlData = [mlData]
 
         for l in range(0,len(self._buffer)): self._buffer[l] = mlData[l]
         self._signal.value = SIG_NEWIMAGE
