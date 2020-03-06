@@ -26,6 +26,10 @@ class dataProcess:
         """Data processing method to overwrite"""
         return NotImplemented
     
+    def finalize_process(self):
+        """Process finalization method to overwrite"""
+        return NotImplemented
+
     # Mechanism
     def start_process(self):
         logger.info('Starting process')
@@ -55,6 +59,7 @@ class dataProcess:
                 self.process(self._buffer)
                 self._signal.value = SIG_RUNNING
         logger.info('Process is stopped')
+        self.finalize_process()
 
 class imageProcess(dataProcess):
     _image_dimension = None
