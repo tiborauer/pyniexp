@@ -4,7 +4,7 @@ from nidaqmx.stream_writers import AnalogMultiChannelWriter
 import matplotlib.pyplot as plt
 from loguru import logger
 from time import sleep
-from utils import Status
+from pyniexp.utils import Status
 
 class Waveform:
     SCALING = 2 # actual intensity = amplitude (V) * SCALE (2mA/V)
@@ -39,7 +39,7 @@ class Waveform:
 
         rampup = linspace(0,self.amplitude,self.rampUp*self.samplingRate)
         rampdown = linspace(self.amplitude,0,self.rampDown*self.samplingRate)
-        envelope = concatenate((rampup,self.amplitude*ones(stimDuration*self.samplingRate),rampdown))
+        envelope = concatenate((rampup,self.amplitude*ones(int(stimDuration*self.samplingRate)),rampdown))
 
         return envelope * waveform
 
@@ -127,7 +127,7 @@ class Stimulator:
         self._DAQ.timing.cfg_samp_clk_timing(
             rate = self.waves[0].samplingRate,
             sample_mode = nidaqmx.constants.AcquisitionType.FINITE,
-            samps_per_chan = self.waves[0].duration * self.waves[0].samplingRate)
+            samps_per_chan = int(self.waves[0].duration * self.waves[0].samplingRate))
         writer = AnalogMultiChannelWriter(self._DAQ.out_stream,auto_start=False)  
         writer.write_many_sample(vstack([w.signal for w in self.waves]))
     
