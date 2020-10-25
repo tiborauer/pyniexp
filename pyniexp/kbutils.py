@@ -4,9 +4,12 @@ try:
     import keyboard
 except ImportError:
     print('module "keyboard" is not installed')
-    raise(ImportError)
+    raise ImportError
 
-kbLayout = [k[0] for k in keyboard._os_keyboard.official_virtual_keys.values()]
+kbLayout = []
+if hasattr(keyboard._os_keyboard, 'official_virtual_keys'):
+    kbLayout = [k[0] for k in keyboard._os_keyboard.official_virtual_keys.values()]
+
 
 class Key:
     name = ''
