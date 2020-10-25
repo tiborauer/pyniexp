@@ -114,7 +114,7 @@ def example_scanner_and_buttons(config='config_scanner.json',emul=False):
 
 
 if __name__ == '__main__':
-    config = r'D:\Projects\pyniexp\config_scanner.json'
+    config = r'D:\Projects\pyniexp\examples\config_scanner.json'
 #    example_scanner_wait(config=config,False)    
 #    example_scanner_check(config=config,False)
     example_buttons(config=config,emul_buttons=True)
