@@ -24,7 +24,7 @@ class Waveform:
 
     @duration.setter
     def duration(self,val):
-        assert val > self.rampUp + self.rampDown, "duration {} is smaller than rampup + rampdown = {}".format(val, self.rupDuration + self.rdownDuration)
+        assert val > self.rampUp + self.rampDown, "duration {} is smaller than rampup + rampdown = {}".format(val, self.rampUp + self.rampDown)
         self._duration = val
 
     @property
@@ -134,8 +134,10 @@ class Stimulator:
     def stimulate(self):
         if self.status == Status.CONFIGURED: self._DAQ.start()
 
-    def stop(self):
-        if self.status == Status.RUNNING: self._DAQ.stop()
+    def stop(self,doSendZero=False):
+        if self.status == Status.RUNNING: self.initialize()
+        if doSendZero and (self.status == Status.CONNECTED or self.status == Status.CONFIGURED):
+            self._DAQ.write([0]*self.nChannels)
 
 class TI:
 
