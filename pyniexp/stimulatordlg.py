@@ -16,7 +16,7 @@ class StimulatorDlg(QtWidgets.QWidget):
 
     def __init__(self):
         super().__init__(parent=None, flags=QtCore.Qt.Window)
-        uic.loadUi(os.path.join(pyniexp.__path__[0],'stimulatordlg.ui'), self)    
+        uic.loadUi(os.path.join(list(pyniexp.__path__)[0],'stimulatordlg.ui'), self)    
 
         configFile = None
         if os.path.exists('config_stimulation.json'):
@@ -78,11 +78,12 @@ class StimulatorDlg(QtWidgets.QWidget):
         if self._stimulator.status.value > 0: self.btnLoadWaves.setEnabled(True)
 
     def loadWaves(self):
-        self._stimulator.initialize()
         self._stimulator.loadWaveform(self._waves)
+        self.btnRun.setEnabled(True)
 
     def run(self):
         self._stimulator.stimulate()
+        self.btnStop.setEnabled(True)
 
     def stop(self):
         self._stimulator.stop()
