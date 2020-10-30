@@ -98,7 +98,6 @@ class Stimulator:
 
     def close(self):
         if self._DAQ is None: return
-        self.stop()
         self._DAQ.close()
         self._DAQ = None
 
@@ -121,8 +120,8 @@ class Stimulator:
 
         if self.status == Status.RUNNING:
             if waitUntilFinished: self._DAQ.wait_until_done()
-            else: self.initialize()
-        else: self._DAQ.stop()
+            else: self.stop()
+        else: self.initialize()
 
         self._DAQ.timing.cfg_samp_clk_timing(
             rate = self.waves[0].samplingRate,
@@ -135,7 +134,9 @@ class Stimulator:
         if self.status == Status.CONFIGURED: self._DAQ.start()
 
     def stop(self,doSendZero=False):
-        if self.status == Status.RUNNING: self.initialize()
+        if self.status == Status.RUNNING: 
+            self._DAQ.close()
+        self.initialize()
         if doSendZero and (self.status == Status.CONNECTED or self.status == Status.CONFIGURED):
             self._DAQ.write([0]*self.nChannels)
 
