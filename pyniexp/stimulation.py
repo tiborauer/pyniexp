@@ -98,7 +98,7 @@ class Stimulator:
 
     def close(self):
         if self._DAQ is None: return
-        if self.status == Status.RUNNING: self._DAQ.stop()
+        self.stop()
         self._DAQ.close()
         self._DAQ = None
 
@@ -132,7 +132,10 @@ class Stimulator:
         writer.write_many_sample(vstack([w.signal for w in self.waves]))
     
     def stimulate(self):
-        self._DAQ.start()
+        if self.status == Status.CONFIGURED: self._DAQ.start()
+
+    def stop(self):
+        if self.status == Status.RUNNING: self._DAQ.stop()
 
 class TI:
 
