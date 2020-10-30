@@ -7,9 +7,12 @@ setup(
     author_email='tibor.auer@gmail.com',
     
     packages=['pyniexp'],
-    install_requires=['keyboard','nidaqmx','loguru','matplotlib','pyserial'],
+    install_requires=['keyboard','nidaqmx','loguru','matplotlib','pyserial','pyqt5','pyqtgraph'],
     
-    version='0.23.1',
+    package_data={'pyniexp': ['stimulatordlg.ui']},
+    include_package_data=True,
+
+    version='0.23.3',
     license='GPL-3.0',
     description='Python interface for neuroimaging experiments',
     
