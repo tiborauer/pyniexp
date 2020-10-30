@@ -7,7 +7,7 @@ from time import sleep
 from pyniexp.utils import Status
 
 class Waveform:
-    SCALING = 2 # actual intensity = amplitude (V) * SCALE (2mA/V)
+    SCALING = 2 # actual intensity (peak to trough) = amplitude * 2
 
     def __init__(self,amplitude = 1, frequency = 10, phase=0, duration = 20, rampUp = 4, rampDown = 4, samplingRate = 1000):
         
@@ -45,7 +45,7 @@ class Waveform:
 
     def show(self):
         fig, ax = plt.subplots()
-        ax.plot(arange(0,self.duration,1/self.samplingRate) , self.signal*self.SCALING, label='Waveform')
+        ax.plot(arange(0,self.duration,1/self.samplingRate) , self.signal, label='Waveform')
         ax.set(xlabel='time [s]', ylabel='intensity [mA]')
         ax.grid()
         ax.legend()
