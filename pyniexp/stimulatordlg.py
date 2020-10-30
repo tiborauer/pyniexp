@@ -16,15 +16,12 @@ class StimulatorDlg(QtWidgets.QWidget):
 
     def __init__(self):
         super().__init__(parent=None, flags=QtCore.Qt.Window)
+        uic.loadUi(os.path.join(pyniexp.__path__[0],'stimulatordlg.ui'), self)    
 
+        configFile = None
         if os.path.exists('config_stimulation.json'):
             configFile = 'config_stimulation.json'
-        else:
-            configFile = QtWidgets.QFileDialog.getOpenFileName(
-                caption="Select 'Configuration JSON file'", filter='ini files (*.json)')[0]
-
-        uic.loadUi(os.path.join(pyniexp.__path__[0],'stimulatordlg.ui'), self)    
-        self._stimulator = Stimulator(configFile)
+        self.loadConfig(configFile)
 
         for i in [0, 1]:
             self._plot[i] = pg.PlotWidget(self)
@@ -43,7 +40,6 @@ class StimulatorDlg(QtWidgets.QWidget):
                 y=zeros(1000),
                 pen=pg.mkPen(color='r', width=2))
 
-        self.lblStatus.setText(self._stimulator.status.name)
         self.cbStimType.currentTextChanged.connect(self.updateDlg)
 
         self.sbIntensity1.valueChanged.connect(self.updatePlots)
@@ -57,12 +53,13 @@ class StimulatorDlg(QtWidgets.QWidget):
         self.sbRampDown.valueChanged.connect(self.updatePlots)
         self.sbSamplingRate.valueChanged.connect(self.updatePlots)
 
-        self.btnLoadConfig.clicked.connect(self.loadConfig)
+        self.btnLoadConfig.clicked.connect(lambda: self.loadConfig(None))
+        self.btnLoadWaves.clicked.connect(self.loadWaves)
+        self.btnRun.clicked.connect(self.run)
+        self.btnStop.clicked.connect(self.stop)
         
         self.updateDlg()
         self.updatePlots()
-
-        if self._stimulator.status.value > 0: self.btnLoadWaves.setEnabled(True)
 
         self.setWindowTitle("Stimulator")
         self.show()
@@ -70,6 +67,25 @@ class StimulatorDlg(QtWidgets.QWidget):
     def closeEvent(self, event):
         self.hide()
         self._stimulator = None
+
+    def loadConfig(self,configFile=None):
+        if configFile is None:
+            configFile = QtWidgets.QFileDialog.getOpenFileName(
+                    caption="Select 'Configuration JSON file'", filter='ini files (*.json)')[0]
+        self._stimulator = None
+        self._stimulator = Stimulator(configFile)
+        self.lblStatus.setText(self._stimulator.status.name)
+        if self._stimulator.status.value > 0: self.btnLoadWaves.setEnabled(True)
+
+    def loadWaves(self):
+        self._stimulator.initialize()
+        self._stimulator.loadWaveform(self._waves)
+
+    def run(self):
+        self._stimulator.stimulate()
+
+    def stop(self):
+        self._stimulator.stop()
 
     def updateDlg(self):
         if self.cbStimType.currentText() == 'Dual-channel':
@@ -95,13 +111,6 @@ class StimulatorDlg(QtWidgets.QWidget):
 
         self.progressBar.setMaximum(self._waves[0].duration*1000)
         self.progressBar.setValue(0)
-
-
-    def loadConfig(self):
-        configFile = QtWidgets.QFileDialog.getOpenFileName(
-                caption="Select 'Configuration JSON file'", filter='ini files (*.json)')[0]
-        self._stimulator = None
-        self._stimulator = Stimulator(configFile)
 
     def setChannel(self,isVisible=[0,0]):
         for i in range(len(isVisible)):
