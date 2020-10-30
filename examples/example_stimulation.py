@@ -1,7 +1,7 @@
 from pyniexp.stimulation import Waveform, Stimulator
 from time import sleep
 
-stim = Stimulator(configFile=r'D:\Projects\repetitive-match-to-sample\config_stimulation.json')
+stim = Stimulator(configFile=r'D:\Projects\pyniexp\examples\config_stimulation_sim.json')
 
 # Output Signal Parameters
 phase=0
