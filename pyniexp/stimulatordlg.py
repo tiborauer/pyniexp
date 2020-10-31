@@ -13,24 +13,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog
 from PyQt5.QtCore import Qt, QTimer
 import pyqtgraph as pg
 
-#class Counter(QThread):
-#    t0 = None
-#    timeLimit = int
-#    countChanged = pyqtSignal(int)
-#
-#    def __init__(self,timeLimit=60000):
-#        super().__init__()
-#        self.timeLimit = timeLimit
-#
-#    def run(self):
-#        t0 = time()
-#        eTime = 0
-#        while eTime < self.timeLimit:
-#            sleep(0.01)
-#            eTime = (time()-t0)*1000
-#            self.countChanged.emit(int(eTime))
-
-class StimulatorDlg(QWidget):
+class Stimulator(QWidget):
     _stimulator = None
     _t0 = None
     _timer = None
@@ -99,10 +82,6 @@ class StimulatorDlg(QWidget):
             configFile = QFileDialog.getOpenFileName(
                     caption="Select 'Configuration JSON file'", filter='ini files (*.json)')[0]
         if len(configFile) == 0:
-            if not(self._stimulator is None):
-                return
-            else:
-                self.loadConfig()
                 return
         self._stimulator = None
         self._stimulator = Stimulator(configFile)
@@ -172,13 +151,3 @@ class StimulatorDlg(QWidget):
             self.__getattribute__("sbPhase{:d}".format(i+1)).setVisible(isVisible[i])
             self.__getattribute__("lblIntensity{:d}".format(i+1)).setVisible(isVisible[i])
             self.__getattribute__("sbIntensity{:d}".format(i+1)).setVisible(isVisible[i])
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    app.setApplicationName('Stimulator')
-    app.setOrganizationName('PyNIExp')
-    app.setApplicationVersion('1.0')
-
-    window = StimulatorDlg()
-    
-    app.exec_()
