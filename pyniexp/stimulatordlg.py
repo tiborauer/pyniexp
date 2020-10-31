@@ -1,4 +1,5 @@
-import os, sys, threading
+import os, sys
+from multiprocessing import Process
 from time import time, sleep
 
 import pyniexp
@@ -9,26 +10,30 @@ from numpy import arange, zeros
 
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer
 import pyqtgraph as pg
 
-class Counter(QThread):
-    timeLimit = int
-    countChanged = pyqtSignal(int)
-
-    def __init__(self,timeLimit=60000):
-        super().__init__()
-        self.timeLimit = timeLimit
-
-    def run(self):
-        count = 0
-        while count < self.timeLimit:
-            sleep(0.01)
-            count +=10
-            self.countChanged.emit(count)
+#class Counter(QThread):
+#    t0 = None
+#    timeLimit = int
+#    countChanged = pyqtSignal(int)
+#
+#    def __init__(self,timeLimit=60000):
+#        super().__init__()
+#        self.timeLimit = timeLimit
+#
+#    def run(self):
+#        t0 = time()
+#        eTime = 0
+#        while eTime < self.timeLimit:
+#            sleep(0.01)
+#            eTime = (time()-t0)*1000
+#            self.countChanged.emit(int(eTime))
 
 class StimulatorDlg(QWidget):
     _stimulator = None
+    _t0 = None
+    _timer = None
     _plot = [None, None]
     _waves = [None, None]
 
@@ -76,6 +81,9 @@ class StimulatorDlg(QWidget):
         self.btnRun.clicked.connect(self.run)
         self.btnStop.clicked.connect(self.stop)
         
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self.updateOnTimer)
+
         self.updateDlg()
         self.updatePlots()
 
@@ -108,11 +116,9 @@ class StimulatorDlg(QWidget):
         self.lblStatus.setText(self._stimulator.status.name)
 
     def run(self):
-        t0 = time()
         self._stimulator.stimulate()
-        self.progress = Counter(self.progressBar.maximum())
-        self.progress.countChanged.connect(self.updateOnCounter)
-        self.progress.start()
+        self._t0 = time()
+        self._timer.start(10)
         self.btnRun.setEnabled(False)
         self.btnStop.setEnabled(True)
 
@@ -120,8 +126,9 @@ class StimulatorDlg(QWidget):
         self._stimulator.stop()
         self.btnRun.setEnabled(False)
         self.btnStop.setEnabled(False)
-        self.progress.stop()
+        self._timer.stop()
         self.progressBar.setValue(0)
+        self.lblStatus.setText(self._stimulator.status.name)
 
     def updateDlg(self):
         if self.cbStimType.currentText() == 'Dual-channel':
@@ -147,9 +154,13 @@ class StimulatorDlg(QWidget):
 
         self.progressBar.setMaximum(self._waves[0].duration*1000)
         
-    def updateOnCounter(self, value):
-        self.progressBar.setValue(value)
-        if self.progressBar.value() == self.progressBar.maximum(): self.btnStop.setEnabled(False)
+    def updateOnTimer(self):
+        TOL = 10
+        self.progressBar.setValue(int((time()-self._t0)*1000))
+        if self._stimulator.status == Status.STOPPED:
+            self.btnStop.setEnabled(False)
+            self._timer.stop()
+            self.progressBar.setValue(0)
         self.lblStatus.setText(self._stimulator.status.name)
 
     def setChannel(self,isVisible=[0,0]):
