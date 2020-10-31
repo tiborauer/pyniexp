@@ -118,10 +118,8 @@ class Stimulator:
                 all([d == waveList[0].samplingRate for d in [w.samplingRate for w in waveList]]), "Waves MUST have the same duration and sampling rate"
             self.waves = waveList
 
-        if self.status == Status.RUNNING:
-            if waitUntilFinished: self._DAQ.wait_until_done()
-            else: self.stop()
-        else: self.initialize()
+        if (self.status == Status.RUNNING and waitUntilFinished): self._DAQ.wait_until_done()
+        self.initialize()
 
         self._DAQ.timing.cfg_samp_clk_timing(
             rate = self.waves[0].samplingRate,
@@ -133,12 +131,8 @@ class Stimulator:
     def stimulate(self):
         if self.status == Status.CONFIGURED: self._DAQ.start()
 
-    def stop(self,doSendZero=False):
-        if self.status == Status.RUNNING: 
-            self._DAQ.close()
+    def stop(self):
         self.initialize()
-        if doSendZero and (self.status == Status.CONNECTED or self.status == Status.CONFIGURED):
-            self._DAQ.write([0]*self.nChannels)
 
 class TI:
 
