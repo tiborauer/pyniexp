@@ -696,7 +696,7 @@
           <number>0</number>
          </property>
          <property name="format">
-          <string>%p ms</string>
+          <string>%v ms</string>
          </property>
         </widget>
        </item>

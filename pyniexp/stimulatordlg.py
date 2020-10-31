@@ -1,4 +1,5 @@
-import os, sys
+import os, sys, threading
+from time import time, sleep
 
 import pyniexp
 from pyniexp.stimulation import Waveform, Stimulator
@@ -6,17 +7,34 @@ from pyniexp.utils import Status
 
 from numpy import arange, zeros
 
-from PyQt5 import QtWidgets, QtCore, uic
+from PyQt5.uic import loadUi
+from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 import pyqtgraph as pg
 
-class StimulatorDlg(QtWidgets.QWidget):
+class Counter(QThread):
+    timeLimit = int
+    countChanged = pyqtSignal(int)
+
+    def __init__(self,timeLimit=60000):
+        super().__init__()
+        self.timeLimit = timeLimit
+
+    def run(self):
+        count = 0
+        while count < self.timeLimit:
+            sleep(0.01)
+            count +=10
+            self.countChanged.emit(count)
+
+class StimulatorDlg(QWidget):
     _stimulator = None
     _plot = [None, None]
     _waves = [None, None]
 
     def __init__(self):
-        super().__init__(parent=None, flags=QtCore.Qt.Window)
-        uic.loadUi(os.path.join(list(pyniexp.__path__)[0],'stimulatordlg.ui'), self)    
+        super().__init__(parent=None, flags=Qt.Window)
+        loadUi(os.path.join(list(pyniexp.__path__)[0],'stimulatordlg.ui'), self)    
 
         configFile = None
         if os.path.exists('config_stimulation.json'):
@@ -70,8 +88,14 @@ class StimulatorDlg(QtWidgets.QWidget):
 
     def loadConfig(self,configFile=None):
         if configFile is None:
-            configFile = QtWidgets.QFileDialog.getOpenFileName(
+            configFile = QFileDialog.getOpenFileName(
                     caption="Select 'Configuration JSON file'", filter='ini files (*.json)')[0]
+        if len(configFile) == 0:
+            if not(self._stimulator is None):
+                return
+            else:
+                self.loadConfig()
+                return
         self._stimulator = None
         self._stimulator = Stimulator(configFile)
         self.lblStatus.setText(self._stimulator.status.name)
@@ -80,13 +104,24 @@ class StimulatorDlg(QtWidgets.QWidget):
     def loadWaves(self):
         self._stimulator.loadWaveform(self._waves)
         self.btnRun.setEnabled(True)
+        self.progressBar.setValue(0)
+        self.lblStatus.setText(self._stimulator.status.name)
 
     def run(self):
+        t0 = time()
         self._stimulator.stimulate()
+        self.progress = Counter(self.progressBar.maximum())
+        self.progress.countChanged.connect(self.updateOnCounter)
+        self.progress.start()
+        self.btnRun.setEnabled(False)
         self.btnStop.setEnabled(True)
 
     def stop(self):
         self._stimulator.stop()
+        self.btnRun.setEnabled(False)
+        self.btnStop.setEnabled(False)
+        self.progress.stop()
+        self.progressBar.setValue(0)
 
     def updateDlg(self):
         if self.cbStimType.currentText() == 'Dual-channel':
@@ -111,7 +146,11 @@ class StimulatorDlg(QtWidgets.QWidget):
             self._plot[i].getPlotItem().setYRange(-self._waves[i].amplitude*2, self._waves[i].amplitude*2, padding=0.0)
 
         self.progressBar.setMaximum(self._waves[0].duration*1000)
-        self.progressBar.setValue(0)
+        
+    def updateOnCounter(self, value):
+        self.progressBar.setValue(value)
+        if self.progressBar.value() == self.progressBar.maximum(): self.btnStop.setEnabled(False)
+        self.lblStatus.setText(self._stimulator.status.name)
 
     def setChannel(self,isVisible=[0,0]):
         for i in range(len(isVisible)):
@@ -124,7 +163,7 @@ class StimulatorDlg(QtWidgets.QWidget):
             self.__getattribute__("sbIntensity{:d}".format(i+1)).setVisible(isVisible[i])
 
 if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     app.setApplicationName('Stimulator')
     app.setOrganizationName('PyNIExp')
     app.setApplicationVersion('1.0')
