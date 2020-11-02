@@ -20,12 +20,11 @@ class Stimulator(QWidget):
     _plot = [None, None]
     _waves = [None, None]
 
-    def __init__(self):
+    def __init__(self,configFile=None):
         super().__init__(parent=None, flags=Qt.Window)
         loadUi(os.path.join(list(pyniexp.__path__)[0],'stimulatordlg.ui'), self)    
 
-        configFile = None
-        if os.path.exists('config_stimulation.json'):
+        if (configFile is None) and os.path.exists('config_stimulation.json'):
             configFile = 'config_stimulation.json'
         self.loadConfig(configFile)
 

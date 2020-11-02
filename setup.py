@@ -12,7 +12,7 @@ setup(
     package_data={'pyniexp': ['stimulatordlg.ui']},
     include_package_data=True,
 
-    version='0.26.0',
+    version='0.26.1',
     license='GPL-3.0',
     description='Python interface for neuroimaging experiments',
     
