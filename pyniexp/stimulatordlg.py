@@ -13,18 +13,19 @@ from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog
 from PyQt5.QtCore import Qt, QTimer
 import pyqtgraph as pg
 
-class Stimulator(QWidget):
+class StimulatorApp(QWidget):
     _stimulator = None
     _t0 = None
     _timer = None
     _plot = [None, None]
     _waves = [None, None]
 
-    def __init__(self,configFile=None):
+    def __init__(self):
         super().__init__(parent=None, flags=Qt.Window)
         loadUi(os.path.join(list(pyniexp.__path__)[0],'stimulatordlg.ui'), self)    
 
-        if (configFile is None) and os.path.exists('config_stimulation.json'):
+        configFile = None
+        if os.path.exists('config_stimulation.json'):
             configFile = 'config_stimulation.json'
         self.loadConfig(configFile)
 
