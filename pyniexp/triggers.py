@@ -1,4 +1,5 @@
 import serial
+from pyniexp.utils import listSerial
 from loguru import logger
 
 class BrainVision:
@@ -9,7 +10,7 @@ class BrainVision:
         return self._isConnected
 
     def __init__(self,port='COM6'):
-        if not any([p.device == port for p in serial.tools.list_ports.comports()]):
+        if not any([p == port for p in listSerial()]):
             logger.error('port {} is not available'.format(port))
         else:
             self._port = serial.Serial(port)

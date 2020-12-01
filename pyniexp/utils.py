@@ -1,6 +1,7 @@
 from time import time
 from multiprocessing import Value
 from enum import Enum
+from serial.tools import list_ports
 
 class Status(Enum):
     DISCONNECTED = 0
@@ -18,6 +19,9 @@ def ismember(list1, list2):
 
 def list_find(str_list, pattern):
     return [i for i in range(0,len(str_list)) if str_list[i].find(pattern) != -1]
+
+def listSerial():
+    return [p.device for p in list_ports.comports()]
 
 class clock:
     
