@@ -42,7 +42,7 @@ class dataProcess:
             return
 
         if type(mlData) == double: # matlab array
-            mlData = mlData._data.tolist()
+            mlData = list(mlData._data)
         elif type(mlData) == float: # single value
             mlData = [mlData]
 
