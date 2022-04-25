@@ -41,7 +41,8 @@ class Waveform:
         rampdown = linspace(self.amplitude,0,self.rampDown*self.samplingRate)
         envelope = concatenate((rampup,self.amplitude*ones(int(stimDuration*self.samplingRate)),rampdown))
 
-        return envelope * waveform
+        shapeJoint = min(envelope.shape,waveform.shape) # ensure same lenght
+        return envelope[0:shapeJoint[0]] * waveform[0:shapeJoint[0]]
 
     def show(self):
         fig, ax = plt.subplots()
