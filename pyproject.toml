@@ -1,0 +1,40 @@
+[build-system]
+requires = [
+  "setuptools>=60",
+  "setuptools-scm>=8.0",
+  "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.urls]
+"Source" = "https://github.com/tiborauer/pyniexp"
+"Tracker" = "https://github.com/tiborauer/pyniexp/issues"
+
+[project]
+name = "pyniexp"
+version = "0.28.0"
+description = "Python interface for neuroimaging experiments"
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = [
+  "neuroimaging", 
+  "neurostimulation"
+]
+authors = [
+  {name = "Tibor Auer", email = "tibor.auer@gmail.com" }
+]
+
+requires-python = ">=3.10"
+dynamic = ["dependencies"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+write_to = "src/pyniexp/_version.py"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.pytest.ini_options]
+addopts = "--cov=src --cov-report term --cov-report html"
+testpaths = [ "tests" ]

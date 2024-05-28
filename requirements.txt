@@ -1,0 +1,9 @@
+setuptools
+pytest
+pytest-cov
+keyboard
+nidaqmx
+matplotlib
+pyserial
+pyqt6
+pyqtgraph
