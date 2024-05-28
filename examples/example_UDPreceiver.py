@@ -9,7 +9,7 @@ Copyright (C) 2016-2017 OpenNFT.org
 Written by Tibor Auer
 """
 
-from pyniexp.connection import Udp
+from pyniexp.network import Udp
 
 UDP_IP = "127.0.0.1"
 UDP_PORT = 1234

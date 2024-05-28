@@ -1,5 +1,5 @@
 import serial
-from .utils import getLogger, listSerial
+from ..utils import getLogger, listSerial
 
 logger = getLogger()
 

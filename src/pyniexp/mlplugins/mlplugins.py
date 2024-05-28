@@ -1,12 +1,14 @@
 from numpy import array, prod, flip
 from multiprocessing import Process, Value, RawArray
-from loguru import logger
 from matlab import double
+from ..utils import getLogger
 
 SIG_NOTSTARTED = -1
 SIG_RUNNING = 1
 SIG_STOPPED = 0
 SIG_NEWIMAGE = 10
+
+logger = getLogger()
 
 class dataProcess:
     __process = Process()

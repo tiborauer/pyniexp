@@ -1,17 +1,17 @@
-from pyniexp import scannersynch
+from pyniexp.scanner import ScannerSynch
 from time import sleep
 
 ## Initialise
-# SSO = scannersynch.scanner_synch() # no config --> emulates canner synch pulse and button box
-# SSO = scannersynch.scanner_synch(config='config_scanner.json') # connect to synch pulse and button box according to the config
-# SSO = scannersynch.scanner_synch(config='config_scanner.json') # connect to synch pulse and button box according to the config
-# SSO = scannersynch.scanner_synch(config='config_scanner.json',emul_synch=True) # emulate scanner synch pulse
-# SSO = scannersynch.scanner_synch(config='config_scanner.json',emul_buttons=True) # emulate button box
-# SSO = scannersynch.scanner_synch(config='config_scanner.json',emul_synch=True,emul_buttons=True) # emulate scanner synch pulse and button box
+# SSO = ScannerSynch() # no config --> emulates canner synch pulse and button box
+# SSO = ScannerSynch(config='config_scanner.json') # connect to synch pulse and button box according to the config
+# SSO = ScannerSynch(config='config_scanner.json') # connect to synch pulse and button box according to the config
+# SSO = ScannerSynch(config='config_scanner.json',emul_synch=True) # emulate scanner synch pulse
+# SSO = ScannerSynch(config='config_scanner.json',emul_buttons=True) # emulate button box
+# SSO = ScannerSynch(config='config_scanner.json',emul_synch=True,emul_buttons=True) # emulate scanner synch pulse and button box
 
 ## Example for scanner synch pulse #1: - Simple case
 def example_scanner_wait(config='config_scanner.json',emul_synch=False):
-    SSO = scannersynch.scanner_synch(config=config,emul_synch=emul_synch,emul_buttons=-1)
+    SSO = ScannerSynch(config=config,emul_synch=emul_synch,emul_buttons=-1)
     SSO.set_synch_readout_time(0.5)
     SSO.TR = 2
     SSO.start_process()
@@ -30,7 +30,7 @@ def example_scanner_wait(config='config_scanner.json',emul_synch=False):
 def example_scanner_check(config='config_scanner.json',emul_synch=False):
     from random import randrange
 
-    SSO = scannersynch.scanner_synch(config=config,emul_synch=emul_synch,emul_buttons=-1)
+    SSO = ScannerSynch(config=config,emul_synch=emul_synch,emul_buttons=-1)
     SSO.set_synch_readout_time(0.5)
     SSO.TR = 2
     SSO.start_process()
@@ -50,7 +50,7 @@ def example_scanner_check(config='config_scanner.json',emul_synch=False):
     SSO = None
 
 def example_buttons(config='config_scanner.json',emul_buttons=False):
-    SSO = scannersynch.scanner_synch(config=config,emul_synch=-1,emul_buttons=emul_buttons)
+    SSO = ScannerSynch(config=config,emul_synch=-1,emul_buttons=emul_buttons)
     SSO.set_button_readout_time(0.5)        # block individual buttons
     # SSO.set_buttonbox_readout_time(0.5)   # block the whole buttonbox
     if not(SSO.emul_buttons): SSO.add_buttonbox('Nata')
@@ -86,7 +86,7 @@ def example_buttons(config='config_scanner.json',emul_buttons=False):
     SSO = None
 
 def example_scanner_and_buttons(config='config_scanner.json',emul=False):
-    SSO = scannersynch.scanner_synch(config=config,emul_synch=emul,emul_buttons=emul)
+    SSO = ScannerSynch(config=config,emul_synch=emul,emul_buttons=emul)
 
     SSO.set_synch_readout_time(0.5)
     SSO.TR = 2

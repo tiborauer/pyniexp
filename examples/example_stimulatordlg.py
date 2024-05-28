@@ -9,4 +9,4 @@ app.setApplicationVersion('1.0')
 
 stimdlg = StimulatorApp()
 
-app.exec_()
+app.exec()

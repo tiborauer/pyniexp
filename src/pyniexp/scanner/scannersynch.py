@@ -3,7 +3,7 @@ import sys, json
 from time import time
 from multiprocessing import Process, Value, RawArray
 
-from .utils import binvec2dec, ismember
+from ..utils import binvec2dec, ismember
 
 try:
     import nidaqmx
@@ -19,7 +19,7 @@ except ImportError:
 
 
 #### Main class
-class scanner_synch:
+class ScannerSynch:
 
     ## Properties
     # Private properties
