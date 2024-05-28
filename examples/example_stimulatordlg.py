@@ -1,6 +1,6 @@
 import sys
-from PyQt5.QtWidgets import QApplication
-from pyniexp.stimulatordlg import StimulatorApp
+from PyQt6.QtWidgets import QApplication
+from pyniexp.stimulator import StimulatorApp
 
 app = QApplication(sys.argv)
 app.setApplicationName('Stimulator')

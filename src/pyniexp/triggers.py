@@ -1,6 +1,7 @@
 import serial
-from pyniexp.utils import listSerial
-from loguru import logger
+from .utils import getLogger, listSerial
+
+logger = getLogger()
 
 class BrainVision:
     _port = []

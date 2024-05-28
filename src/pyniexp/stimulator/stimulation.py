@@ -2,9 +2,10 @@ import nidaqmx, serial, json, sys
 from numpy import concatenate, vstack, arange, linspace, cos, pi, ones
 from nidaqmx.stream_writers import AnalogMultiChannelWriter
 import matplotlib.pyplot as plt
-from loguru import logger
 from time import sleep
-from pyniexp.utils import Status
+from ..utils import Status, getLogger
+
+logger = getLogger()
 
 class Waveform:
     SCALING = 2 # actual intensity (peak to trough) = amplitude * 2
@@ -53,7 +54,7 @@ class Waveform:
 
         plt.show()
 
-class Stimulator:
+class TES:
     isDAQ = False
     _DAQ = None
 

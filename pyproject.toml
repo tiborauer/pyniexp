@@ -11,7 +11,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyniexp"
-version = "0.28.0"
 description = "Python interface for neuroimaging experiments"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -24,13 +23,13 @@ authors = [
 ]
 
 requires-python = ">=3.10"
-dynamic = ["dependencies"]
+dynamic = ["version", "dependencies"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools_scm]
-write_to = "src/pyniexp/_version.py"
+version_file = "src/pyniexp/_version.py"
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}

@@ -1,7 +1,7 @@
 import socket, sys, struct
 from datetime import datetime
 from select import select
-from pyniexp.utils import clock
+from .utils import clock
 
 if sys.byteorder == 'little': byteorder = '<'
 elif sys.byteorder == 'big': byteorder = '>'
