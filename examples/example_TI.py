@@ -1,4 +1,4 @@
-from pyniexp.stimulation import TI
+from pyniexp.stimulator import TI
 
 stim = TI()
 stim.connect()
