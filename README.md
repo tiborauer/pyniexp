@@ -20,4 +20,4 @@ Python interfaces for neuroimaging experiments (and how to import them)
 
 
  ## Install
-`pip install git+https://github.com/tiborauer/pyniexp.git`
+`pip install PyNIExp`

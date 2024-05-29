@@ -10,8 +10,8 @@ build-backend = "setuptools.build_meta"
 "Tracker" = "https://github.com/tiborauer/pyniexp/issues"
 
 [project]
-name = "pyniexp"
-description = "Python interface for neuroimaging experiments"
+name = "PyNIExp"
+description = "Python interface for NeuroImaging Experiments"
 readme = "README.md"
 license = {file = "LICENSE"}
 keywords = [
@@ -30,6 +30,7 @@ where = ["src"]
 
 [tool.setuptools_scm]
 version_file = "src/pyniexp/_version.py"
+# version_scheme = "post-release"
 local_scheme = "no-local-version"
 
 [tool.setuptools.dynamic]
